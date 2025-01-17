@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+
+<!-- ************************ Chained Conditional Blocks ************************ -->
+<!-- Overview:
+    This module adds `if(*) *`, `then *`, and `else *` syntax operators to SRAI calls.
+    These operators help simplify conditional blocks and allow for more flexible
+    syntax within AIML code.
+    
+    - `if(*) *` If the expression inside the parentheses evaluates to TRUE (or is
+                a boolean TRUE value), then the other expression is SRAI called.
+    - `then *`  If the most recent if block evaluated to TRUE, then the expressions
+                in proceeding then blocks are also SRAI called.
+    - `else *`  If the most recent if block evaluated to FALSE, then the expressions
+                in proceeding else blocks are SRAI called instead.
+
+Shared Predicates:
+    branchFlag: Tracks the conditional value of the most recently evaluated if() 
+    call. If a FALSE value was evaluated, then it allows any following else blocks 
+    to run until another if() block is called.
+-->
+
+<!-- ************************ If Block ************************ -->
+
+<!-- BOOKMARK -->
+<!-- if(*B) *F (Value If-Then)
+    Calls function F if and only if boolean value B is TRUE. Otherwise, no action
+    is taken.
+-->
+<category>
+    <pattern>IF LPAREN TRUE RPAREN *</pattern>
+    <template>
+        <srai> branchFlag := `TRUE` </srai>
+        <srai> then <star/> </srai>
+        <srai> branchFlag := `TRUE` </srai>
+    </template>
+</category>
+<category>
+    <pattern>IF LPAREN FALSE RPAREN *</pattern>
+    <template>
+        <srai> branchFlag := FALSE </srai>
+    </template>
+</category>
+<category>
+    <pattern>IF LPAREN UNKNOWN RPAREN *</pattern>
+    <template>
+        <srai> branchFlag := FALSE </srai>
+    </template>
+</category>
+
+<!-- if(*A) *F (Smart If-Then)
+    Calls function F if and only if expression A evaluates to a TRUE value. Otherwise, 
+    no action is taken. Depends on internal branch resolution functions to determine
+    if eval() produced a TRUE value or not.
+-->
+<category>
+    <pattern>IF LPAREN * RPAREN *</pattern>
+    <template>
+        <srai> _if(<srai> eval(<star index="1"/>) </srai>) <star index="2"/> </srai>
+    </template>
+</category>
+<!-- if(*Any) _F1 else *F2 (Smart If-Then-Else) -->
+<category>
+    <pattern>IF LPAREN * RPAREN _ ELSE *</pattern>
+    <template>
+        <srai> 
+            _if(<srai> eval(<star index="1"/>) </srai>) <star index="2"/> 
+            else <star index="3"/>
+        </srai>
+    </template>
+</category>
+<category>
+    <pattern>IF LPAREN NOT * RPAREN *</pattern>
+    <template>
+        <srai> if(<srai> not <star index="1"/> </srai>) <star index="2"/> </srai>
+    </template>
+</category>
+
+<!-- _if(TRUE) *F (Internal If-Then Resolution to TRUE) 
+    Marks the most recent If block as evaluated to TRUE, then places the SRAI call.
+-->
+<category>
+    <pattern>UNDERSCORE IF LPAREN TRUE RPAREN *</pattern>
+    <template>
+        <srai> branchFlag := `TRUE` </srai>
+        <srai> <star/> </srai>
+        <srai> branchFlag := `TRUE` </srai>
+    </template>
+</category>
+<!-- _if(TRUE) *F1 else *F2 (Internal If-Else Resulotion to If) 
+-->
+<category>
+    <pattern>UNDERSCORE IF LPAREN TRUE RPAREN * ELSE *</pattern>
+    <template>
+        <srai> branchFlag := `TRUE` </srai>
+        <srai> <star index="1"/> </srai>
+        <srai> branchFlag := `TRUE` </srai>
+    </template>
+</category>
+<!-- _if(*A) *F (Internal If-Then Resolution to FALSE) 
+    Marks the most recent If block as evaluated to FALSE, then does nothing.
+-->
+<category>
+    <pattern>UNDERSCORE IF LPAREN * RPAREN *</pattern>
+    <template>
+        <srai> branchFlag := `FALSE` </srai>
+    </template>
+</category>
+<!-- _if(*A) *F1 else *F2 (Internal If-Then Resolution to FALSE) 
+    Sets branchFlag to FALSE then calls F2. Ensures `branchFlag` is FALSE both
+    at the beginning and end of this block's scope.
+-->
+<category>
+    <pattern>UNDERSCORE IF LPAREN * RPAREN * ELSE *</pattern>
+    <template>
+        <srai> branchFlag := `FALSE` </srai>
+        <srai> else <star index="3"/> </srai>
+        <srai> branchFlag := `FALSE` </srai>
+    </template>
+</category>
+
+<!-- ****************************** IfNot Block ****************************** -->
+<!-- ifnot(*BoolVal) *FuncName 
+    Calls function FuncName if boolean BoolVal is FALSE or unknown. Compatible with
+    then/else blocks.
+-->
+<!-- ifnot(TRUE) *FuncName -->
+<category>
+    <pattern>IFNOT LPAREN TRUE RPAREN *</pattern>
+    <template>
+        <srai> branchFlag := `TRUE` </srai>
+        <srai> <star/> </srai>
+        <srai> branchFlag := `TRUE` </srai>
+    </template>
+</category>
+<!-- ifnot(FALSE) *FuncName -->
+<category>
+    <pattern>IFNOT LPAREN FALSE RPAREN *</pattern>
+    <template>
+        <srai> branchFlag := `FALSE` </srai>
+    </template>
+</category>
+<!-- ifnot(unknown) *FuncName -->
+<category>
+    <pattern>IFNOT LPAREN UNKNOWN RPAREN *</pattern>
+    <template>
+        <srai> branchFlag := `TRUE` </srai>
+        <srai> <star/> </srai>
+    </template>
+</category>
+<!-- ifnot(dref *PredName) *FuncName -->
+<category>
+    <pattern>IFNOT LPAREN DREF * RPAREN *</pattern>
+    <template>
+        <srai> ifnot(<srai> dref <star index="1"/> </srai>) <star index="2"/> </srai>
+    </template>
+</category>
+<!-- ifnot(get(*PredName)) *FuncName,  Less buggy alias of ifnot(dref *) -->
+<category>
+    <pattern>IFNOT LPAREN GET LPAREN * RPAREN RPAREN *</pattern>
+    <template>
+        <srai> ifnot(<srai> get(<star index="1"/>) </srai>) <star index="2"/> </srai>
+    </template>
+</category>
+
+
+<!-- ****************************** THEN BLOCK ****************************** -->
+<!-- then *F (Then Block)
+    `then` blocks are used to chain together commands in a multi-line format in AIML.
+    They are compatible with `if()`, `else`, and `do` blocks. 
+    
+    Example:
+    <srai>
+        if(SomeBool) SomeCategory1
+            then SomeCategory2
+            then SomeCategory3
+            then ...
+        else SomeOtherCategory1
+            then SomeOtherCategory2
+            then SomeOtherCategory3
+            then ...
+        do AnotherCategory1
+            then AnotherCategory2
+            then AnotherCategory3
+            then ...
+    </srai>
+-->
+<!-- then *F (Then Block - Leaf Node) -->
+<category>
+    <pattern>THEN *</pattern>
+    <template>
+        <condition name="branchFlag" value="TRUE">
+            <srai> <star/> </srai>
+        </condition>
+    </template>
+</category>
+
+<!-- then *F1 then _F2 (Then Block - 2-Way Branch) -->
+<category>
+    <pattern>THEN * THEN _</pattern>
+    <template>
+        <srai> <star index="1"/> </srai>
+        <srai> then <star index="2"/> </srai>
+    </template>
+</category>
+
+
+<!-- ****************************** ELSE BLOCK ****************************** -->
+<!-- else *F (Else Block)
+    Only calls function F if the previous If-Then block did NOT evaluate to TRUE. 
+    Does not alter the branchFlag predicate, allowing multiple else blocks to be 
+    used in sequence to chain together commands.
+-->
+<category>
+    <pattern>ELSE *</pattern>
+    <template>
+        <condition name="branchFlag" value="FALSE">
+            <srai> branchFlag := `TRUE` </srai>
+            <srai> <star/> </srai>
+            <srai> branchFlag := `FALSE` </srai>
+        </condition>
+    </template>
+</category>
+
+<!-- else *FuncName then _ (Chained Else - Root Node) 
+    Allows `then` blocks to be used in the context of an `else` block. Sets the
+    branchFlag flag back to FALSE after executing all chained commands, and uses
+    branchFlag to activate `then` blocks.
+-->
+<category>
+    <pattern>ELSE * THEN _</pattern>
+    <template>
+        
+        <condition name="branchFlag" value="FALSE">
+            <srai>
+                do branchFlag := `TRUE`
+                    then <star index="1"/>
+                    then branchFlag := `FALSE`
+                    then <star index="2"/>
+            </srai>
+        </condition>
+
+    </template>
+</category>
+
+<category>
+    <pattern>_ ELSE *</pattern>
+    <template>
+        <srai> <star index="1"/> </srai>
+        <srai> else <star index="2"/> </srai>
+    </template>
+</category>
+<category>
+    <pattern>THEN ELSE *</pattern>
+    <template>
+        <srai> else <star/> </srai>
+    </template>
+</category>
+
+
+<!-- ***************************** DO THEN BLOCK ***************************** -->
+<!-- 
+    Do-Then blocks allow multiple actions to be chained together sequentially in
+    one SRAI call, decluttering the code.
+    
+    IMPORTANT: When assigning values use backticks to delimit the value being assigned
+    from the rest of the chained commands.
+-->
+<!-- do *F1,  Calls function F1 -->
+<category>
+    <pattern>DO *</pattern>
+    <template>
+        <srai> <star/> </srai>
+    </template>
+</category>
+<!-- *F1 do *F2 -->
+<category>
+    <pattern>* DO *</pattern>
+    <template>
+        <srai> <star index="1"/> </srai>
+
+        <think>
+        <set var="prevCondition"><srai> dref branchFlag </srai></set>
+        <srai> branchFlag := `TRUE` </srai>
+        </think>
+        
+        <srai> do <star index="2"/> </srai>
+        
+        <srai> branchFlag := `<get var="prevCondition"/>` </srai>
+    </template>
+</category>
+<!-- do *F1 then *F2 (Do Then Block - Root)
+    Calls function F1 and then F2. F2 may be a sequence of `then` blocks.
+-->
+<category>
+    <pattern>DO * THEN *</pattern>
+    <template>
+        <think>
+        <set var="prevCondition"><srai> dref branchFlag </srai></set>
+        </think>
+
+        <srai> branchFlag := `TRUE` </srai>
+        <srai> <star index="1"/> </srai>
+
+        <srai> branchFlag := `TRUE` </srai>
+        <srai> then <star index="2"/> </srai>
+        
+        <srai> branchFlag := `<get var="prevCondition"/>` </srai>
+    </template>
+</category>
+
+
+</aiml>
+
+
+
+
+
+
+
+
+
+

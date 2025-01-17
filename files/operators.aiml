@@ -1,0 +1,1065 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+<!--
+	
+	Syntax Documentation:
+	This bot replicates a limited range of programming features accessible via
+	SRAI calls. This is to help eliminate the AIML syntax that is verbose and difficult
+	to read, write, and debug.
+	
+	P := V (Value Assignment): Assigns value V as the value for predicate P, regardless
+	if it's the name of a predicate.
+	
+	P1 = P2 (Reference Assignment): Assigns the value of predicate P2 to predicate P1.
+	
+	return V (Return Value): Assigns value V to predicate return. The return predicate
+	is used as a global return variable to faciliate returning values from functions.
+	
+	eval(A) (Syntax Evaluation): Evaluates syntax A and returns its value. If S is
+	not syntax, then it will be treated as a predicate. If it does not have a predicate
+	value, then it is treated as a value.
+	
+	V1 :== V2 (Value Equality): Returns TRUE if value V1 is the same as value V2,
+	false otherwise. 
+	
+	(P,V)1 == (P,V)2 (Smart Equality): For both input values, if there exists a
+	predicate P with the same name as value V, then P's value is used instead of
+	V. Returns TRUE if both evaluated values are the same, FALSE otherwise.
+	
+	_SomeFunction() (Internal Function): Leading underscore and trailing parentheses
+	are used as a form of name mangling to indicate internal functions that the 
+	user isn't meant to access directly, as well as to replicate standard C/C++ 
+	syntax for calling a function to make the code easier to understand.
+	
+	if(B) F (Value If-Then Call Function): If boolean B is TRUE, then function F is called.
+	Otherwise, nothing happens.
+	
+	if(P) F (Reference If-Then Call Function): If predicate P's value is TRUE, then
+	function F is called. Otherwise, nothing happens.
+	
+	if(S) F (Syntax If-Then Call Function): If syntax S evaluates to TRUE, then
+	function F is called. Otherwise, nothing happens.
+	
+	else F (Contextual Else Call Function): If the most recent If-Then block evaluated
+	to FALSE, then function F is called. Function F can be another If-Then block.
+	
+-->
+
+
+<!-- Invalid Function Fallback
+    Fallback for invalid function calls to be handled gracefully. Returns "unknown"
+    if no function matches the function header.
+-->
+<category>
+    <pattern>* LPAREN ^ RPAREN</pattern>
+    <template>
+        <srai> return unknown </srai>
+    </template>
+</category>
+
+
+<!-- *P := *V, *P := `*V` (Strict Assignment Operator)
+    Assigns value V to Predicate P. Treats V strictly as a value. Best practice
+    is to surround assignment values in backticks to ensure smooth syntax parsing,
+    and is essential when chaining assignment commands.
+-->
+<category>
+    <pattern>* COLON EQUALS BACKTICK * BACKTICK</pattern>
+    <template>
+        
+        <think>
+        <set var="input1">
+            <denormalize><star index="1"/></denormalize>
+        </set>
+        <set var="input2">
+            <denormalize><star index="2"/></denormalize>
+        </set>
+        <set><name><get var="input1"/></name>
+            <get var="input2"/>
+        </set>
+        <srai> _addPredicate(<get var="input1"/>) </srai>
+        </think>
+        
+    </template>
+</category>
+<!-- Safe to use outside of chained commands, chained commands require backticks -->
+<category>
+    <pattern>* COLON EQUALS *</pattern>
+    <template>
+        
+        <think>
+        <set var="input1">
+            <denormalize><star index="1"/></denormalize>
+        </set>
+        <set var="input2">
+            <denormalize><star index="2"/></denormalize>
+        </set>
+        <set><name><get var="input1"/></name>
+            <get var="input2"/>
+        </set>
+        <srai> _addPredicate(<get var="input1"/>) </srai>
+        </think>
+        
+    </template>
+</category>
+
+<!-- _addPredicate(*PredicateName)
+    Allows type checking to detect PredicateName as a PREDICATE type.
+-->
+<category>
+    <pattern>UNDERSCORE ADDPREDICATE LPAREN * RPAREN</pattern>
+    <template>
+        
+        <think>
+        <set><name><denormalize><star/>_TYPE</denormalize></name>
+            PREDICATE
+        </set>
+        </think>
+        
+    </template>
+</category>
+
+<category>
+    <pattern>SET LPAREN * * RPAREN</pattern>
+    <template>
+        <srai> <star index="1"/> := <star index="2"/> </srai>
+    </template>
+</category>
+
+<!-- *P $= *V (Silent Assignment) 
+    Performs predicate assignment, but does not create any metadata. Primarily
+    used for creating logs.
+-->
+<category>
+    <pattern> * DOLLARSIGN EQUALS * </pattern>
+    <template>
+        
+        <think>
+        <set var="input1">
+            <denormalize><star index="1"/></denormalize>
+        </set>
+        <set var="input2">
+            <denormalize><star index="2"/></denormalize>
+        </set>
+        <set><name><get var="input1"/></name>
+            <get var="input2"/>
+        </set>
+        </think>
+        
+    </template>
+</category>
+
+<!-- *************************** Return Operator *************************** -->
+<!--
+    Explicitly declares a value or function to return to an outer scope function.
+    When given a value, returns the value. When given a function call, it returns
+    the value returned by the function, if one exists.
+    
+    `return` operators must NEVER be wrapped inside think tags! This defeats the
+    purpose by hiding the return value from the outer scope.
+-->
+
+<!-- return *V
+    Returns value V from the function. Return tags must NEVER be wrapped in think
+    tags, otherwise they will NOT be able to return any data to the outer scope!
+-->
+<category>
+    <pattern>RETURN *</pattern>
+    <template>
+        <think>
+            <set name="return"><denormalize><star/></denormalize></set>
+        </think>
+        <srai> log( RETURNING <get name="return"/> ) </srai>
+        <get name="return"/>
+    </template>
+</category>
+<category>
+    <pattern>RETURN BACKTICK * BACKTICK</pattern>
+    <template><srai> return <star/> </srai></template>
+</category>
+
+<!-- return *F(^A) (Function Return) 
+    Evaluates function F with input(s) A, then returns its value. If no value was
+    returned, then it returns `void`. If the function does not exist, then `uknown`
+    is returned.
+-->
+<category>
+    <pattern>RETURN * LPAREN * RPAREN</pattern>
+    <template>
+            
+        <think>
+        <!-- Evaluate the function -->
+        <set var="result">
+            <srai> eval(<star index="1"/>(<star index="2"/>)) </srai>
+        </set>
+        </think>
+
+        <!-- Return the result -->
+        <srai> return <get var="result"/> </srai>
+    </template>
+</category>
+<!-- return *F() (Function Return - No Inputs) -->
+<category>
+    <pattern>RETURN * LPAREN RPAREN</pattern>
+    <template>
+        
+        <think>
+        <!-- Evaluate the function -->
+        <set var="result">
+            <srai> eval(<star/>()) </srai>
+        </set>
+        </think>
+
+        <!-- Return the result -->
+        <srai> return <srai> eval(<star/>()) </srai> </srai>
+    </template>
+</category>
+<!-- return *F() (Explicit Eval Return) 
+    If eval is explicitly returned, then it is called on the input expression given.
+    This is to avoid the Function Return operator from evaluating an eval call.
+-->
+<category>
+    <pattern>RETURN EVAL LPAREN * RPAREN</pattern>
+    <template>
+        <think>
+            <set var="result">
+                <srai> eval(<star/>) </srai>
+            </set>
+        </think>
+        <srai> log( RETURNING <get name="return"/> ) </srai>
+        <srai> return <get var="result"/> </srai>
+    </template>
+</category>
+
+<!-- return, nop, noOp (No Operation) 
+    Performs no action, and has no side effects. Use nop/noop if the first chained
+    command in a chain block does not fire.
+    
+    Return also does nothing, but will return the current value of the return
+    predicate. This is useful if return is assigned in a think block.
+-->
+<category>
+    <pattern>RETURN</pattern>
+    <template/>
+</category>
+<category>
+    <pattern>NOP</pattern>
+    <template/>
+</category>
+<category>
+    <pattern>NOOP</pattern>
+    <template/>
+</category>
+
+<!-- **************************** DELAY COMMAND **************************** -->
+<!-- delay(*Num) Functional form of the delay tag -->
+<category>
+    <pattern>DELAY LPAREN <set>number</set> RPAREN</pattern>
+    <template>
+        <srai> log(ENTERING delay(<star/>)) </srai>
+        <denormalize><delay><star/></delay></denormalize>
+    </template>
+</category>
+
+
+<!-- ******************** INCREMENT/DECREMENT OPERATORS ******************** -->
+<!-- Due to syntax conflict, the value (DASH DASH) is required inside comments.  -->
+
+<!-- *Num++ (Value Increment) 
+    Increments number Num by 1 and returns the result.
+-->
+<category>
+    <pattern><set>number</set> PLUS PLUS</pattern>
+    <template>
+        <srai> return <map name="successor"><star/></map> </srai>
+    </template>
+</category>
+
+<!-- *Num- - (Value Decrement) 
+    Decrements number Num by 1 and returns the result.
+-->
+<category>
+    <pattern><set>number</set> DASH DASH</pattern>
+    <template>
+        <srai> return <map name="predecessor"><star/></map> </srai>
+    </template>
+</category>
+
+
+<!-- Predicate Increment
+    Facilitates value increment of a numeric predicate. If applied to a non-numeric
+    predicate, then the value `ERROR: NaN` is returned and no change is made to the
+    predicate.
+-->
+<category>
+    <pattern>* PLUS PLUS</pattern>
+    <template>
+            
+        <think>
+        <!-- Get value -->
+        <set var="predName"><denormalize><star/></denormalize></set>
+        <set var="predVal">
+            <srai> get(<get var="predName"/>) </srai>
+        </set>
+        <set var="decVal">
+            <srai> _<get var="predVal"/>++ </srai>
+        </set>
+
+        <!-- If Number: Increment and assign, then return new value -->
+        <!-- Otherwise, return `ERROR: Predicate <star/> is NaN` -->
+        <srai> 
+            if(<srai> isNumber(<get var="predVal"/>) </srai>) 
+            <get var="predName"/> := <get var="decVal"/>
+        </srai>
+        <srai> then return <get var="decVal"/> </srai>
+        <srai>else return `ERROR: Predicate <star/> is NaN`</srai>
+        </think>
+
+    </template>
+</category>
+<category>
+    <pattern>* DASH DASH</pattern>
+    <template>
+            
+        <think>
+        <!-- Get value -->
+        <set var="predName"><denormalize><star/></denormalize></set>
+        <set var="predVal">
+            <srai> get(<get var="predName"/>) </srai>
+        </set>
+        <set var="incVal">
+            <srai> _<get var="predVal"/>-- </srai>
+        </set>
+
+        <!-- If Number: Increment and assign, then return new value -->
+        <!-- Otherwise, return `ERROR: Predicate <star/> is NaN` -->
+        <srai> 
+            if(<srai> isNumber(<get var="predVal"/>) </srai>) 
+            <get var="predName"/> := <get var="incVal"/>
+        </srai>
+        <srai> then return <get var="incVal"/> </srai>
+        <srai>else return `ERROR: Predicate <star/> is NaN`</srai>
+        </think>
+
+    </template>
+</category>
+
+<!-- _*Num++ (Internal Self-Increment) -->
+<category>
+    <pattern>UNDERSCORE <set>number</set> PLUS PLUS</pattern>
+    <template>
+        <srai> 
+            return <map name="successor"> <star/> </map> 
+        </srai>
+    </template>
+</category>
+<!-- _*Num- - (Internal Self-Decrement) -->
+<category>
+    <pattern>UNDERSCORE <set>number</set> DASH DASH</pattern>
+    <template>
+        <srai> 
+            return <map name="predecessor"> <star/> </map> 
+        </srai>
+    </template>
+</category>
+<!-- _*NotNum++ (Internal Self-Increment - Type Error)
+    Returns `Error: Predicate <star/> is NaN` when input is NOT a Number
+-->
+<category>
+    <pattern>UNDERSCORE * PLUS PLUS</pattern>
+    <template>
+        <srai> return `Error: Predicate <star/> is NaN` </srai>
+    </template>
+</category>
+<!-- _*NotNum- - (Internal Self-Decrement - Type Error)
+    Returns `Error: Predicate <star/> is NaN` when input is NOT a Number
+-->
+<category>
+    <pattern>UNDERSCORE * DASH DASH</pattern>
+    <template>
+        <srai> return `Error: Predicate <star/> is NaN` </srai>
+    </template>
+</category>
+
+
+
+<!-- *************************** Message Logging *************************** -->
+
+<!-- log(*Message)
+    Creates a sequential log predicate to trace program flow
+-->
+<category>
+    <pattern> LOG LPAREN * RPAREN </pattern>
+    <template>
+        
+        <think>
+            <!-- Initialize log counter, if needed -->
+            <condition name="logCount" value="unknown">
+                <set name="logCount">0</set>
+            </condition>
+
+            <!-- Create the logged message (without predicate metadata) -->
+            <srai> log<get name="logCount"/> $= <denormalize><star/></denormalize> </srai>
+
+            <!-- Increment log counter -->
+            <set name="logCount">
+                <map name="successor"><get name="logCount"/></map>
+            </set>
+        </think>
+        
+    </template>
+</category>
+
+
+<!-- *********************** Predicate Dereferencing *********************** -->
+
+<!-- get(*P), dref *P, dref(*P) (Predicate Dereference Operators)
+    Obtains and returns the value of predicate P. Comes in function and operator
+    forms. Functional forms allow for more accurate operand identification, while
+    the dref operator allows for less-verbose dereferencing.
+-->
+<category>
+    <pattern>GET LPAREN * RPAREN</pattern>
+    <template>
+        <think>
+            <set var="value">
+                <get><name><denormalize><star/></denormalize></name></get>
+            </set>
+        </think>
+        <srai> return <get var="value"/> </srai>
+    </template>
+</category>
+<!-- dref *P -->
+<category>
+    <pattern>DREF *</pattern>
+    <template><srai> get(<star/>) </srai></template>
+</category>
+<!-- dref(*P) -->
+<category>
+    <pattern>DREF LPAREN * RPAREN</pattern>
+    <template><srai> get(<star/>) </srai></template>
+</category>
+
+
+
+
+<!-- ************************** EQUALITY OPERATORS ************************** -->
+<!-- V1 :== V2 (Equality)
+    Returns TRUE if value V1 is the same as value V2
+-->
+<category>
+    <pattern>* COLON EQUALS EQUALS *</pattern>
+    <template>
+        
+        <think>
+            <set var="V1"><denormalize><star index="1"/></denormalize></set>
+            <set var="V2"><denormalize><star index="2"/></denormalize></set>
+            <set var="result">
+                <condition var="V1">
+                    <li><value><get var="V2"/></value>TRUE</li>
+                    <li>FALSE</li>
+                </condition>
+            </set>
+        </think>
+        <srai> return <get var="result"/> </srai>
+        
+    </template>
+</category>
+<!-- V1 :!== B2 (Inequality) -->
+<category>
+    <pattern>* COLON BANG EQUALS EQUALS *</pattern>
+    <template>
+        
+        <think>
+            <set var="V1"><denormalize><star index="1"/></denormalize></set>
+            <set var="V2"><denormalize><star index="2"/></denormalize></set>
+            <set var="result">
+                <condition var="V1">
+                    <li><value><get var="V2"/></value>FALSE</li>
+                    <li>TRUE</li>
+                </condition>
+            </set>
+        </think>
+        <srai> return <get var="result"/> </srai>
+        
+    </template>
+</category>
+<category>
+    <pattern>* BANG EQUALS EQUALS *</pattern>
+    <template>
+        <srai>
+            <srai> eval(<star index="1"/>) </srai> :== eval(<star index="2"/>)
+        </srai>
+    </template>
+</category>
+
+<!-- equal(*A1 *A2), unequal(*A1 *A2) (Functional Equality/Inequality Operator) 
+    Functional alternative to using the syntax :== and :!==, has no dependency
+    on either.
+-->
+<category>
+    <pattern>EQUAL LPAREN * * RPAREN</pattern>
+    <template>
+        <think>
+            <set var="V1"><denormalize><star index="1"/></denormalize></set>
+            <set var="V2"><denormalize><star index="2"/></denormalize></set>
+            <set var="result">
+                <condition var="V1">
+                    <li><value><get var="V2"/></value>TRUE</li>
+                    <li>FALSE</li>
+                </condition>
+            </set>
+        </think>
+        <srai> return <get var="result"/> </srai>
+    </template>
+</category>
+<category>
+    <pattern>UNEQUAL LPAREN * * RPAREN</pattern>
+    <template>
+        <think>
+            <set var="V1"><denormalize><star index="1"/></denormalize></set>
+            <set var="V2"><denormalize><star index="2"/></denormalize></set>
+            <set var="result">
+                <condition var="V1">
+                    <li><value><get var="V2"/></value>FALSE</li>
+                    <li>TRUE</li>
+                </condition>
+            </set>
+        </think>
+        <srai> return <get var="result"/> </srai>
+    </template>
+</category>
+
+<!-- ***************************** NOT OPERATOR ***************************** -->
+<!-- not *A, not(*A) (NOT Operator)
+    Evaluates expression A and returns one of the following:
+    - Booleans: Return opposite boolean value
+    - Predicates: Get predicate's value, then recurse with value
+    - Syntax: Evaluate syntax, then recurse with returned value
+    - Values: Return FALSE
+    - unknown: Return TRUE
+-->
+
+<!-- not *Bool  NOTs the boolean value Bool -->
+<category>
+    <pattern>NOT <set>boolean</set></pattern>
+    <template>
+        <srai> _not(<star/>) </srai>
+     </template>
+</category>
+<!-- not *Any  Evaluates expression Any and NOTs the returned value -->
+<category>
+    <pattern>NOT *</pattern>
+    <template>
+        <srai> eval(<star/>) </srai>
+        <srai> _not(return) <star/> </srai>
+    </template>
+</category>
+<!-- not dref *PredName  Dereferences predicate PredName and NOTs the value -->
+<category>
+    <pattern>NOT DREF *</pattern>
+    <template>
+        <srai> dref <star/> </srai>
+        <srai> _not(return) </srai>
+    </template>
+</category>
+<!-- not exists(*PredName)  Dereferences predicate PredName and NOTs the value -->
+<category>
+    <pattern>NOT EXISTS LPAREN * RPAREN</pattern>
+    <template>
+        <srai> _not(<srai> exists(<star/>) </srai>) </srai>
+    </template>
+</category>
+
+<!-- not(*Any)  Alias for not *, keeps operand separated from other expressions -->
+<category>
+    <pattern>NOT LPAREN * RPAREN</pattern>
+    <template>
+        <srai> not <star/> </srai>
+    </template>
+</category>
+
+<!-- not unknown  Returns TRUE, treats unknown as a falsey value -->
+<category>
+    <pattern>NOT UNKNOWN</pattern>
+    <template>
+        <srai> return TRUE </srai>
+    </template>
+</category>
+<!-- not TRUE  Returns FALSE -->
+<category>
+    <pattern>NOT TRUE</pattern>
+    <template>
+        <srai> return FALSE </srai>
+    </template>
+</category>
+<!-- not FALSE  Returns TRUE -->
+<category>
+    <pattern>NOT FALSE</pattern>
+    <template>
+        <srai> return TRUE </srai>
+    </template>
+</category>
+
+<!-- _not return  NOTs the most recently returned value -->
+<category>
+    <pattern>UNDERSCORE NOT RETURN</pattern>
+    <template>
+        <srai> NOT <get name="return"/> </srai>
+    </template>
+</category>
+
+<!-- _not TRUE  Returns FALSE -->
+<category>
+    <pattern>UNDERSCORE NOT TRUE</pattern>
+    <template>
+        <srai> return FALSE </srai>
+    </template>
+</category>
+<!-- _not FALSE  Returns TRUE -->
+<category>
+    <pattern>UNDERSCORE NOT FALSE</pattern>
+    <template>
+        <srai> return TRUE </srai>
+    </template>
+</category>
+
+<!-- Unknown values are interpreted as FALSEY by the NOT operator, returning TRUE -->
+<category>
+    <pattern>UNDERSCORE NOT UNKNOWN</pattern>
+    <template>
+        <srai> return TRUE </srai>
+    </template>
+</category>
+<category>
+    <pattern>UNDERSCORE NOT * </pattern>
+    <template>
+        <srai> return FALSE </srai>
+    </template>
+</category>
+
+
+<!-- **************************** Print Function **************************** -->
+<!-- print(*V)
+    Displays the value V to the user
+-->
+<category>
+    <pattern>PRINT LPAREN BACKTICK * BACKTICK RPAREN</pattern>
+    <template>
+        <srai> print(<star/>) </srai>
+    </template>
+</category>
+<category>
+    <pattern>PRINT LPAREN * RPAREN</pattern>
+    <template>
+        <denormalize><star/></denormalize>
+    </template>
+</category>
+<category>
+    <pattern>PRINT LPAREN EVAL LPAREN * RPAREN RPAREN</pattern>
+    <template>
+            
+        <think>
+        <set var="result">
+            <srai> eval(<star/>) </srai>
+        </set>
+        </think>
+        <denormalize> <get var="result"/> </denormalize>
+
+    </template>
+</category>
+
+<!-- printBreak(*Message)
+    Displays the Message to the user followed by a break tag.
+-->
+<category>
+    <pattern>PRINTBREAK LPAREN * RPAREN</pattern>
+    <template>
+        <denormalize> <star/><br/> </denormalize>
+    </template>
+</category>
+<category>
+    <pattern>PRINTBREAK LPAREN BACKTICK * BACKTICK RPAREN</pattern>
+    <template>
+        <denormalize> <star/><br/> </denormalize>
+    </template>
+</category>
+
+
+<!-- ************************ Expression Evaluation ************************ -->
+<!-- eval(*A) (Smart Expression Evaluation) 
+    Evaluation reduces an expression to its underlying value. Accepts all types:
+    - If A is a predicate name, then the predicate's value is returned. 
+    - If A is a syntax expression, then it is evaluated and the result returned. 
+    - If A is a function call, then the function is called and the result returned 
+    - If A is a value (boolean, number, string), then A is returned.
+-->
+<category>
+    <pattern>EVAL LPAREN * RPAREN</pattern>
+    <template>
+        
+        <!-- Local Variables -->
+        <think>
+        <set var="input"><denormalize><star/></denormalize></set>
+        <set var="inputType"><srai> typeof(<get var="input"/>) </srai></set>
+        <set var="evalInput"><srai> eval_<get var="inputType"/>(<star/>) </srai></set>
+        </think>
+        
+        <srai> return <get var="evalInput"/> </srai>
+        
+    </template>
+</category>
+
+
+<!-- eval_predicate(*P) Returns the value stored in predicate P -->
+<category>
+    <pattern>EVAL UNDERSCORE PREDICATE LPAREN * RPAREN</pattern>
+    <template>
+        <think>
+            <set var="result">
+                <srai> get(<star/>) </srai>
+            </set>
+        </think>
+        <srai> return <get var="result"/> </srai>
+    </template>
+</category>
+<!-- eval_syntax(*S) Returns the value stored in predicate P -->
+<category>
+    <pattern>EVAL UNDERSCORE SYNTAX LPAREN * RPAREN</pattern>
+    <template>
+        
+        <think>
+            <srai> log(CALLING <star/>) </srai>
+            <set var="result">
+                <srai> <star/> </srai>
+            </set>
+        </think>
+        
+        <srai> return <get var="result"/> </srai>
+        
+    </template>
+</category>
+<!-- eval_boolean(*S) Returns the value stored in predicate P -->
+<category>
+    <pattern>EVAL UNDERSCORE BOOLEAN LPAREN * RPAREN</pattern>
+    <template>
+        <srai> return <star/> </srai>
+    </template>
+</category>
+<!-- eval_number(*S) Returns the value stored in predicate P -->
+<category>
+    <pattern>EVAL UNDERSCORE NUMBER LPAREN * RPAREN</pattern>
+    <template>
+        <srai> return <star/> </srai>
+    </template>
+</category>
+<!-- eval_string(*S) Returns the value stored in predicate P -->
+<category>
+    <pattern>EVAL UNDERSCORE STRING LPAREN * RPAREN</pattern>
+    <template>
+        <srai> return <star/> </srai>
+    </template>
+</category>
+
+<!-- eval(*FunctionName(^)) (Functional Evaluation) 
+    Attempt to call the function and return its output.
+    - If it exists but does not return a value, then `void` should be used to indicate 
+      no return was made.
+    - If it exists and returns a value, then the value should be returned.
+    - If it does not exist, then the functional fallback will return an unknown value.
+-->
+<category>
+    <pattern>EVAL LPAREN * LPAREN ^ RPAREN RPAREN</pattern>
+    <template>
+        
+        <think>
+        <set var="functionName"><star index="1"/></set>
+        <set var="functionInputs"><star index="2"/></set>
+
+        <set var="evalOutput">void</set>
+        <!-- Call the Function -->
+        <set var="evalOutput">
+            <srai> <get var="functionName"/>( <get var="functionInputs"/> ) </srai>
+        </set>
+        </think>
+        <!-- If calling the function returned a value, then `void` will be overwritten -->
+        
+        <srai> return <get var="evalOutput"/> </srai>
+        
+    </template>
+</category>
+
+<!-- eval(return) (Return Evaluation) -->
+<category>
+    <pattern>EVAL LPAREN RETURN RPAREN</pattern>
+    <template>
+        <srai> eval(<get name="return"/>) </srai>
+    </template>
+</category>
+<!-- _eval(`*S`) (String Evaluation) -->
+<category>
+    <pattern>UNDERSCORE EVAL LPAREN BACKTICK * BACKTICK RPAREN</pattern>
+    <template>
+        <srai> return <star/> </srai>
+        <srai> evalType := STRING </srai>
+    </template>
+</category>
+<!-- _eval(*B) (Boolean Evaluation) -->
+<category>
+    <pattern>UNDERSCORE EVAL LPAREN <set>boolean</set> RPAREN</pattern>
+    <template>
+        <srai> evalType := BOOLEAN </srai>
+        <srai> return <star/> </srai>
+    </template>
+</category>
+<!-- _eval(*N) (Number Evaluation) -->
+<category>
+    <pattern>UNDERSCORE EVAL LPAREN <set>number</set> RPAREN</pattern>
+    <template>
+        <srai> evalType := NUMBER </srai>
+        <srai> return <star/> </srai>
+    </template>
+</category>
+
+
+
+<!-- ************************** Existence Checking ************************** -->
+<!-- use `exists()` to determine if a predicate has an assigned value or not. -->
+
+<!-- exists(*P) Returns TRUE if value P has an assigned predicate value  -->
+<category>
+    <pattern>EXISTS LPAREN * RPAREN</pattern>
+    <template>
+            
+        <think>
+        <set var="value">
+            <srai> get(<star/>) </srai>
+        </set>
+        <set var="exists">
+            <condition var="value">
+                <li value="unknown"> FALSE </li>
+                <li> TRUE </li>
+            </condition>
+        </set>
+        </think>
+
+        <srai> return <get var="exists"/> </srai>
+
+    </template>
+</category>
+
+<!-- exists(*P) Returns TRUE if value P does not have an assigned predicate value  -->
+<category>
+    <pattern>NOT EXISTS LPAREN * RPAREN</pattern>
+    <template>
+        
+        <think>
+        <set var="output">
+            <srai> not <srai> exists(<star/>) </srai> </srai>
+        </set>
+        </think>
+
+        <srai> return <get var="output"/> </srai>
+
+    </template>
+</category>
+
+
+<!-- **************************** Type Checking **************************** -->
+
+<!-- typeof(*A) 
+    Returns the data type of expression A. Types returned:
+    - BOOLEAN
+    - NUMBER
+    - SYNTAX
+    - PREDICATE
+    - STRING
+-->
+<category>
+    <pattern>TYPEOF LPAREN * RPAREN</pattern>
+    <template>
+        
+        <think>
+        <set var="result">
+            <srai> 
+                if(<srai>isBoolean(<star/>)</srai>) return2 := BOOLEAN
+                else if(<srai>isNumber(<star/>)</srai>) return2 := NUMBER
+                else if(<srai>isSyntax(<star/>)</srai>) return2 := SYNTAX
+                else if(<srai>isPredicate(<star/>)</srai>) return2 := PREDICATE
+                else return2 := STRING 
+            </srai>
+        </set>
+        </think>
+
+        <srai> get(return2) </srai>
+
+    </template>
+</category>
+
+<!-- isPredicate(*A) Returns TRUE if expression A is a predicate -->
+<category>
+    <pattern> ISPREDICATE LPAREN * RPAREN</pattern>
+    <template>
+
+        <think>
+        <set var="input_TYPE">
+            <denormalize><star/>_TYPE</denormalize>
+        </set>
+        <set var="inputType">
+            <srai> get(<get var="input_TYPE"/>) </srai>
+        </set>
+        <condition var="inputType">
+            <li value="PREDICATE">
+                <set var="output">TRUE</set>
+            </li>
+            <li>
+                <set var="output">FALSE</set>
+            </li>
+        </condition>
+        </think>
+        
+        <srai> return <get var="output"/> </srai>
+        
+    </template>
+</category>
+
+<!-- isBoolean(*A) Returns TRUE if expression A is a Boolean. -->
+<category>
+    <pattern> ISBOOLEAN LPAREN <set>boolean</set> RPAREN</pattern>
+    <template>
+        <srai> return TRUE </srai>
+    </template>
+</category>
+<category>
+    <pattern> ISBOOLEAN LPAREN * RPAREN</pattern>
+    <template> <srai> return FALSE </srai> </template>
+</category>
+
+<!-- isNumber(*A) Returns TRUE if expression A is a number -->
+<category>
+    <pattern> ISNUMBER LPAREN <set>number</set> RPAREN</pattern>
+    <template>
+        <srai> return TRUE </srai>
+    </template>
+</category>
+<category>
+    <pattern> ISNUMBER LPAREN * RPAREN</pattern>
+    <template> <srai> return FALSE </srai> </template>
+</category>
+
+<!-- Syntax: Create a category for EACH syntax implemented! -->
+<!-- isSyntax(*P := *V) Assignment -->
+<category>
+    <pattern>ISSYNTAX LPAREN * COLON EQUALS * RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+<!-- isSyntax(*V1 :== *V2) Equality -->
+<category>
+    <pattern>ISSYNTAX LPAREN ^ COLON EQUALS EQUALS * RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+<!-- isSyntax(return ^V) Return -->
+<category>
+    <pattern>ISSYNTAX LPAREN RETURN ^ RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+<!-- isSyntax(*FuncName(^Inputs)) Functions -->
+<category>
+    <pattern>ISSYNTAX LPAREN * LPAREN ^ RPAREN RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+<!-- isSyntax(dref *PredName) Dereference Operator -->
+<category>
+    <pattern>ISSYNTAX LPAREN DREF * RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+<!-- isSyntax(if(*Condition) *FuncCall ) If -->
+<category>
+    <pattern>ISSYNTAX LPAREN IF LPAREN * RPAREN * RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+<!-- isSyntax(then *FuncCall) Then -->
+<category>
+    <pattern>ISSYNTAX LPAREN THEN * RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+<!-- isSyntax(else *FuncCall) Else -->
+<category>
+    <pattern>ISSYNTAX LPAREN ELSE * RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+<!-- isSyntax(not *Any) NOT -->
+<category>
+    <pattern>ISSYNTAX LPAREN NOT * RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+<!-- isSyntax(*Any1 or *Any2) OR -->
+<category>
+    <pattern>ISSYNTAX LPAREN * OR * RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+<!-- isSyntax(*Any1 and *Any2) AND -->
+<category>
+    <pattern>ISSYNTAX LPAREN * AND * RPAREN</pattern>
+    <template> <srai> return TRUE </srai> </template>
+</category>
+
+<!-- isSyntax(*Any) No Match -->
+<category>
+    <pattern>ISSYNTAX LPAREN * RPAREN</pattern>
+    <template><srai> return FALSE </srai></template>
+</category>
+
+<!-- notNull(*Any) Returns TRUE if expression Any is not `unknown` -->
+<category>
+    <pattern>NOTNULL LPAREN * RPAREN</pattern>
+    <template>
+        <srai> return TRUE </srai>
+    </template>
+</category>
+<category>
+    <pattern>NOTNULL LPAREN UNKNOWN RPAREN</pattern>
+    <template>
+        <srai> return FALSE </srai>
+    </template>
+</category>
+<!-- isNull(*Any) Returns TRUE if expression Any is `unknown` -->
+<category>
+    <pattern>ISNULL LPAREN * RPAREN</pattern>
+    <template>
+        <srai> RETURN FALSE </srai>
+    </template>
+</category>
+<category>
+    <pattern>ISNULL LPAREN UNKNOWN RPAREN</pattern>
+    <template>
+        <srai> RETURN TRUE </srai>
+    </template>
+</category>
+
+
+
+
+<!-- ************************** List Manipulation ************************** -->
+
+<!-- first(*L) Returns the first element of a list without using `first` tags -->
+<category>
+    <pattern>FIRST LPAREN * ^ RPAREN</pattern>
+    <template>
+        <srai> return <denormalize><star index="1"/></denormalize> </srai>
+    </template>
+</category>
+
+
+
+
+
+
+
+
+</aiml>
+
+
+
+
+

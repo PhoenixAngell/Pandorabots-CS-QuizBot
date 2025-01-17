@@ -1,0 +1,990 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+<!-- 
+	FAQ Bot + Quiz Bot:
+    Initially, the bot guides users through an FAQ menu for various topics. If
+    students ask for help deciding which career to pursue, the bot will offer to
+    issue a 25 part questionnaire that will tally up their interests and provide
+    a recommendation to them. Students can also explore all five occupations on
+    their own without the quiz by navigating the menu.
+-->
+	
+<!-- 
+    Initialization: This runs upon first contact with a user, and ONLY on first
+    contact.
+-->
+<category>
+    <pattern>INITIALIZE LPAREN RPAREN</pattern>
+    <template>
+        <srai> topic := INITIALIZATION </srai>
+        
+        <!-- Set State and Predicates -->
+        <srai> email := `professor.compsci@university.edu` </srai>
+        <srai> phone := (123) 456-7890 </srai>
+        <srai> office := Room 101, Computer Science Building </srai>
+        <srai> office_hours := 5PM - 9PM </srai>
+
+        <srai> isInitialized := TRUE </srai>        
+        <srai> access_menu(INTRO) </srai>
+    </template>
+</category>
+
+    
+<!--******************************* Fallbacks******************************* -->
+<!-- Initialization -->
+<category>
+    <pattern>*</pattern>
+    <topic>unknown</topic>
+    <template>
+        <srai> if(isInitialized) noMatch(<star/>) </srai>
+        <srai> else initialize() </srai>
+    </template>
+</category>
+<category>
+    <pattern><set>number</set></pattern>
+    <topic>unknown</topic>
+    <template>
+        <srai> if(isInitialized) noMatch(<star/>) </srai>
+        <srai> else initialize() </srai>
+    </template>
+</category>
+
+<category>
+    <pattern>*</pattern>
+    <template>
+        <srai> noMatch(<star/>) </srai>
+    </template>
+</category>
+<category>
+    <pattern> <set>number</set> </pattern>
+    <template>
+        I'm sorry, that isn't an option.
+    </template>
+</category>
+
+<!-- noMatch(^A) (Fallback message)
+    Fallback function for non-matching inputs
+-->
+<category>
+    <pattern>NOMATCH LPAREN ^ RPAREN</pattern>
+    <template>
+        <random>
+            <li>I don't understand "<star/>". Please enter a menu number.</li>
+            <li>I'm sorry, I don't recognize "<star/>". Try entering a menu number.</li>
+            <li>Can you say "<star/>" differently or enter a number from the list?</li>
+        </random>
+        <br/>Or, type 0 to return to the MAIN menu. 
+    </template>
+</category>
+
+<!-- ****************************** User Input ****************************** -->
+
+<!-- *N (User Numeric Input Handler) 
+    Handles general numeric inputs for menu items.
+-->
+<category>
+    <pattern><set>number</set></pattern>
+    <template>
+        <think>
+            <set var="quizzing">
+                <srai> topic :== QUIZ </srai>
+            </set>
+        </think>
+        <!-- Redundant handler for quiz-topic inputs if assigned handler does not fire -->
+        <condition var="quizzing" value="TRUE">
+            <srai> receive(<star/>) </srai>
+        </condition>
+        <condition var="quizzing" value="FALSE">
+            
+            <!-- Local Variables -->
+            <think>
+            <set var="menuNumber"><star/></set>
+            <!-- i.e., MAIN1_PTR, JOBTYPES3_PTR -->
+            <set var="TOPICNUM_PTR"> 
+                <get name="topic"/><get var="menuNumber"/>_PTR 
+            </set>
+            
+            <!-- Get the menu item's topic and navigation pointers -->
+            <set var="selectedTopic">
+                <first><srai> get(<get var="TOPICNUM_PTR"/>) </srai></first>
+            </set>
+            </think>
+            
+                <!-- If a pointer exists: -->
+                <!-- Set the current topic to the menu selection's topic -->
+                <!-- Call the corresponding menu selection at navPath -->
+            <srai> 
+                if(<srai> exists(<get var="TOPICNUM_PTR"/>) </srai>) 
+                    log( Setting topic to <get var="selectedTopic"/> )
+                    then topic := `<get var="selectedTopic"/>` 
+                    then access_menu(<srai> dref <get var="TOPICNUM_PTR"/> </srai>)
+                <!-- Otherwise: Input is invalid, return to current menu. -->
+                else nop
+                    then printBreak(<star/> isn't an option for this menu. Try another number.)
+                    then delay(1)
+                    then access_menu()
+            </srai>
+
+        </condition>
+
+    </template>
+</category>
+
+<!-- reset - Resets the chatbot back to the main menu -->
+<category>
+    <pattern>RESET</pattern>
+    <template>
+        <srai> topic := `INTRO` </srai>
+        <srai> access_menu() </srai>
+    </template>
+</category>
+
+<!-- Greets the user and advances to Main Menu -->
+<topic name="INTRO">
+    
+    <!-- access_menu()
+        Loads the Intro menu
+    -->
+    <category>
+        <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+        <template>
+            <srai> greetUser() </srai>
+            <srai> access_menu(MAIN) </srai>
+        </template>
+    </category>
+    
+    <!-- _greetUser() 
+    Displays the first-time greeting for new users.
+    -->
+    <category>
+        <pattern>GREETUSER LPAREN RPAREN</pattern>
+        <template>
+            <srai> hasGreeted := TRUE </srai>
+            <srai> defaultText() </srai>
+            <br/>
+        </template>
+    </category>
+    
+    <category>
+        <pattern>TEXT LPAREN INTRO 1 RPAREN</pattern>
+        <template>
+            Hello! I'm your Computer Science Career FAQ Bot.  <br/>
+            I can help answer common questions about CS careers. <br/>
+            I can'tunderstand text very well, so please enter the number of the 
+            question you'd like answered.  <br/>
+        </template>
+    </category>
+</topic>
+
+<!-- Main Menu: Displays the MAIN MENU, root node of the nav tree -->
+<topic name="MAIN">
+    <category>
+        <pattern>INITIALIZE LPAREN MAIN RPAREN</pattern>
+        <template>
+            <think>
+                <srai> MAINInit := TRUE </srai>
+                <srai> MAIN1_PTR := JOBTYPES MENU </srai>
+                <srai> MAIN2_PTR := PROGLANG MENU </srai>
+                <srai> MAIN3_PTR := WHICHOCC MENU </srai>
+                <srai> MAIN0_PTR := CONTACT MENU</srai>
+            </think>
+        </template>
+    </category>
+    <category>
+        <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+        <template>
+            <srai> if(MAINInit) return </srai>
+            <srai> else initialize(MAIN) </srai>
+            <srai> defaultText() </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>MAIN MENU</pattern>
+        <template><srai> access_menu() </srai></template>
+    </category>
+    
+    <category>
+        <pattern>TEXT LPAREN MAIN 1 RPAREN</pattern>
+        <template>
+            
+            Enter one of the following numbers to read more:<br/>
+            1. What kinds of jobs can I get with a Computer Science degree?  <br/>
+            2. Which programming languages should I learn for each job?  <br/>
+            3. Which occupation should I choose?  <br/>
+            0. How may I contact the Computer Science career advisor?  <br/>
+            
+        </template>
+    </category>
+</topic>
+
+<topic name="CONTACT">
+    <category>
+        <pattern>INITIALIZE LPAREN CONTACT RPAREN</pattern>
+        <template>
+            <think>
+            <srai> CONTACTInit := TRUE </srai>
+            <srai> CONTACT0_PTR := MAIN MENU </srai>
+            </think>
+        </template>
+    </category>
+    
+    <!-- 0. How can I contact the Computer Science professor? -->
+    <category>
+        <pattern>MENU LPAREN RPAREN</pattern>
+        <template>
+            <srai>ifnot(dref CONTACTInit) initialize(CONTACT)</srai>
+            <srai> defaultText() </srai>
+            Type `0` to go back to the main menu.
+        </template>
+    </category>
+    <category>
+        <pattern>CONTACT MENU</pattern>
+        <template><srai> menu() </srai></template>
+    </category>
+    <category>
+        <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+        <template><srai> menu() </srai></template>
+    </category>
+    
+    <!-- Natural language aliases -->
+    <category>
+        <pattern>^ <set>talkto</set> ^ PROFESSOR ^</pattern>
+        <template>
+            <srai> menu() </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>^ <set>talkto</set> ^ ADVISOR ^</pattern>
+        <template>
+            <srai> menu() </srai>
+        </template>
+    </category>
+    
+    <category>
+        <pattern>TEXT LPAREN CONTACT 1 RPAREN</pattern>
+        <template>
+            
+            You can reach the Computer Science Career Advisor at: <br/>
+            Email: <get name="email"/> <br/>
+            Phone: <get name="phone"/> <br/>
+            Office: <get name="office"/> <br/>
+            Office Hours: <get name="office_hours"/> <br/>
+            <br/>
+            
+        </template>
+    </category>
+
+</topic>
+
+<!-- 1. What kinds of jobs can I get with a Computer Science degree?
+    Lists the five general occupations of a CompSci graduate, prompting the
+    student to pick one.
+-->
+<topic name="JOBTYPES">
+    <category>
+        <pattern>INITIALIZE LPAREN JOBTYPES RPAREN</pattern>
+        <template>
+            <think>
+            <srai> JOBTYPESInit := TRUE </srai>
+            <srai> JOBTYPES1_PTR := SOFTDEV MENU </srai>
+            <srai> JOBTYPES2_PTR := DATASCI MENU </srai>
+            <srai> JOBTYPES3_PTR := CYBERSEC MENU </srai>
+            <srai> JOBTYPES4_PTR := SYSADMIN MENU </srai>
+            <srai> JOBTYPES5_PTR := AIML MENU </srai>
+            <srai> JOBTYPES6_PTR := JOBTYPES ALL </srai>
+            <srai> JOBTYPES0_PTR := MAIN MENU </srai>
+            </think>
+        </template>
+    </category>
+    <category>
+        <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN </pattern>
+        <template>
+            <srai> ifnot(dref JOBTYPESInit) initialize(JOBTYPES) </srai>
+
+            There are many occupations available to Computer Science graduates.
+            Here are five common occupations for Computer Science graduates:<br/>
+            <br/>
+            <srai> listJobTypes() </srai>
+            0. Go back to the main menu<br/>
+            <br/>
+            Which one would you like to learn more about?<br/>
+            
+            <srai> log(EXITING access_menu() for topic <get name="topic"/>) </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>JOBTYPES MENU</pattern>
+        <template><srai> access_menu() </srai></template>
+    </category>
+    
+    <!-- Option 6: List every job type description with 5-7 second delays -->
+    <!--BOOKMARK-->
+    <category>
+        <pattern>JOBTYPES ALL</pattern>
+        <that>^ WHICH ONE ^ LEARN MORE ^</that>
+        <template>
+            <srai>
+                do print(`Alright. Let's go over each one:`)
+                    then delay(1)
+                    then text(SOFTDEV 1)
+                    then delay(5)
+                    then text(DATASCI 1)
+                    then delay(7)
+                    then text(CYBERSEC 1)
+                    then delay(7)
+                    then text(SYSADMIN 1)
+                    then delay(7)
+                    then text(AIML 1)
+                    then delay(1)
+                    then printBreak(Type 0 to go back to the main menu.)
+            </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>ALL *</pattern>
+        <that>^ WHICH ONE ^ LEARN MORE ^</that>
+        <template><srai>6</srai></template>
+    </category>
+    <category>
+        <pattern>JOBTYPES 6</pattern>
+        <template><srai> JOBTYPES ALL </srai></template>
+    </category>
+    
+    <!-- Software Developer -->
+    <topic name="SOFTDEV">
+        
+        <category>
+            <pattern>INITIALIZE LPAREN SOFTDEV RPAREN</pattern>
+            <template>
+                
+                <think>
+                <srai> SOFTDEVInit := TRUE </srai>
+                <srai> SOFTDEV0_PTR := JOBTYPES MENU </srai>
+                </think>
+                
+            </template>
+        </category>
+        
+        <category>
+            <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <template>
+                <srai> ifnot(dref JOBTYPESInit) initialize(SOFTDEV) </srai>
+    
+                <srai> defaultText() </srai>
+                <br/>
+                0. Go Back
+            </template>
+        </category>
+        <category>
+            <pattern>SOFTDEV MENU</pattern>
+            <template><srai> access_menu() </srai></template>
+        </category>
+        
+        <category>
+            <pattern>^ SOFTWARE ^</pattern>
+            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <template><srai> access_menu() </srai></template>
+        </category>
+    
+    <category>
+        <pattern>TEXT LPAREN SOFTDEV 1 RPAREN</pattern>
+        <template>
+                Software Developer: As a Software Developer, your job will involve 
+                building new software systems for organizations that need them.<br/>
+        </template>
+    </category>
+    </topic>
+    <!-- Data Scientist -->
+    <topic name="DATASCI">
+        
+        <category>
+            <pattern>INITIALIZE LPAREN DATASCI RPAREN</pattern>
+            <template>
+                <think>
+                <srai> DATASCIInit := TRUE </srai>
+                <srai> DATASCI0_PTR := JOBTYPES MENU </srai>
+                </think>
+            </template>
+        </category>
+        
+        <category>
+            <pattern>^ DATA ^</pattern>
+            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <template><srai> JOBTYPES 2 </srai></template>
+        </category>
+        <category>
+            <pattern>DATASCI MENU</pattern>
+            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <template>
+                <srai> ifnot(dref DATASCIInit) initialize(DATASCI) </srai>
+                <srai> defaultText() </srai>
+                <br/>
+                0. Go Back
+                
+            </template>
+        </category>
+        <category>
+            <pattern>MENU LPAREN RPAREN</pattern>
+            <template><srai> DATASCI MENU </srai></template>
+        </category>
+        <category>
+            <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+            <template><srai> DATASCI MENU </srai></template>
+        </category>
+        
+        <category>
+            <pattern>TEXT LPAREN DATASCI 1 RPAREN</pattern>
+            <template>
+                
+                Data Scientist: Data Scientists typically analyze data to solve 
+                problems, identify complex patterns in large data sets, and apply
+                techniques and algorithms from statistics and machine learning to
+                "extract" deep insights that can prove invaluable for an organization's
+                decisions. <br/>
+                
+            </template>
+        </category>
+    </topic>
+    <!-- Cybersecurity Analyst -->
+    <topic name="CYBERSEC">
+        
+        <category>
+            <pattern>INITIALIZE LPAREN CYBERSEC RPAREN</pattern>
+            <template>
+                <srai> CYBERSECInit := TRUE </srai>
+                <srai> CYBERSEC0_PTR := JOBTYPES MENU </srai>
+            </template>
+        </category>
+        
+        
+        <category>
+            <pattern>^ CYBERSECURITY ^</pattern>
+            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <template><srai>CYBERSEC MENU</srai></template>
+        </category>
+        <category>
+            <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+            <template><srai> CYBERSEC MENU </srai></template>
+        </category>
+        <category>
+            <pattern>CYBERSEC MENU</pattern>
+            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <template>
+                <srai> ifnot(dref CYBERSECInit) initialize(CYBERSEC) </srai>
+                <srai> defaultText() </srai>
+                <br/>
+                0. Go Back
+            </template>
+        </category>
+        
+        <category>
+            <pattern>TEXT LPAREN CYBERSEC 1 RPAREN</pattern>
+            <template>
+    
+                Cybersecurity Analyst: In short, Cybersecurity Analysts protect 
+                networked systems from cyber threats. Cybersecurity roles are vital 
+                to keeping an organization's data and infrastructure safe from hackers, 
+                spyware, and malware.<br/>
+                
+            </template>
+        </category>
+    </topic>
+    <!-- Systems Administrator -->
+    <topic name="SYSADMIN">
+        
+        <category>
+            <pattern>INITIALIZE LPAREN SYSADMIN RPAREN</pattern>
+            <template>
+                <srai> SYSADMINInit := TRUE </srai>
+                <srai> SYSADMIN0_PTR := JOBTYPES MENU </srai>
+            </template>
+        </category>
+        
+        <category>
+            <pattern>^ SYSTEMS ^</pattern>
+            <topic>jobTypes</topic>
+            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <template><srai>4</srai></template>
+        </category>
+        <category>
+            <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+            <template><srai> SYSADMIN MENU </srai></template>
+        </category>
+        <category>
+            <pattern>SYSADMIN MENU</pattern>
+            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <template>
+                <srai> ifnot(dref SYSADMIN) initialize(SYSADMIN) </srai>
+                <srai> defaultText() </srai>
+                <br/>
+                0. Go Back
+                
+            </template>
+        </category>
+        
+        <category>
+            <pattern>TEXT LPAREN SYSADMIN 1 RPAREN</pattern>
+            <template>
+    
+                Systems Administrator: A Systems Administrator manages an organization's 
+                computers, servers, and network. It is a broad role that focuses on 
+                using the applications built by Software Developers to resolve IT problems
+                and keep the organization's computer systems safe and performant.<br/>
+    
+            </template>
+        </category>
+    </topic>
+    <!-- AI/ML Engineer -->
+    <topic name="AIML">
+        
+        <category>
+            <pattern>INITIALIZE LPAREN AIML RPAREN</pattern>
+            <template>
+                <srai> AIMLInit := TRUE </srai>
+                <srai> AIML0_PTR := JOBTYPES MENU </srai>
+            </template>
+        </category>
+        
+        <category>
+            <pattern>AIML MENU</pattern>
+            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <template>
+                <srai> ifnot(DREF AIMLInit) initialize(AIML) </srai>
+                <srai> defaultText() </srai>
+                <br/>
+                0. Go Back
+            </template>
+        </category>
+        <category>
+            <pattern>^ AI/ML ^</pattern>
+            <topic>AIML</topic>
+            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <template><srai>5</srai></template>
+        </category>
+        <category>
+            <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+            <template><srai> AIML MENU </srai></template>
+        </category>
+        <category>
+            <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+            <template>
+                <srai> AIML menu </srai>
+            </template>
+        </category>
+        
+        <category>
+            <pattern>TEXT LPAREN AIML 1 RPAREN</pattern>
+            <template>
+                
+                AI/ML Engineer: Artificial Intelligence/Machine Learning (AI/ML) Engineers
+                are responsible for the design, development, and deployment of intelligent
+                systems that learn and make decisions with low human intervention. They
+                use a mix of all occupations to apply the cutting edge of AI technology
+                to organizations with big problems.<br/>
+                
+            </template>
+        </category>
+    </topic>
+</topic>
+
+ <!-- 3. What programming languages should I learn for different jobs? -->
+<topic name="PROGLANG">
+    
+    <category>
+        <pattern>INITIALIZE LPAREN PROGLANG RPAREN</pattern>
+        <template>
+            <srai> PROGLANGInit := TRUE </srai>
+            <srai> PROGLANG1_PTR := PROGLANG 1 </srai>
+            <srai> PROGLANG2_PTR := PROGLANG 2 </srai>
+            <srai> PROGLANG3_PTR := PROGLANG 3 </srai>
+            <srai> PROGLANG4_PTR := PROGLANG 4 </srai>
+            <srai> PROGLANG5_PTR := PROGLANG 5 </srai>
+            <srai> PROGLANG6_PTR := PROGLANG ALL </srai>
+            <srai> PROGLANG0_PTR := MAIN MENU </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>PROGLANG MENU</pattern>
+        <template>
+            <think>
+            <srai> ifnot(dref PROGLANGInit) initialize(PROGLANG) </srai>
+            </think>
+            
+            Computer Science occupations require far more than just programming
+            languages, and some don't require any programming skills at all. Let's
+            look at common skills and systems needed for each role:<br/>
+            <br/>
+            <srai> listJobTypes() </srai><br/>
+            0. Go back
+        </template>
+    </category>
+    <category>
+        <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+        <template><srai> PROGLANG MENU </srai></template>
+    </category>
+    
+    <category>
+        <pattern>TEXT PROGLANG 1</pattern>
+        <template>
+            Software Development:<br/> 
+            - Programming languages (Python, Java, C++) <br/>
+            - Version control systems (Git, GitHub) <br/>
+            - Frameworks and libraries (React, Angular, Spring Boot) <br/>
+            - Integrated development environments (PyCharm, IntelliJ, Microsoft Visual Studio) <br/>
+            - Data structures and algorithms <br/>
+            - Development methodologies (Waterfall, Agile) <br/>
+            - Debugging techniques and tools
+        </template>
+    </category>
+    <category>
+        <pattern>PROGLANG 1</pattern>
+        <template>
+            <srai> text PROGLANG 1 </srai> <br/>
+            <br/>
+            0. Go back
+        </template>
+    </category>
+    
+    <category>
+        <pattern>TEXT PROGLANG 2</pattern>
+        <template>
+            Data Science: <br/>
+            - Programming languages (Python, R, SQL) <br/>
+            - Data analysis and visualization tools (Pandas, Matplotlib, Seaborn, Tableau) <br/>
+            - Machine learning frameworks (Scikit-learn, TensorFlow, PyTorch) <br/>
+            - Statistical modeling <br/>
+            - Big data technologies (Hadoop, Spark) <br/>
+            - Data wrangling techniques for handling large and complex datasets
+        </template>
+    </category>
+    <category>
+        <pattern>PROGLANG 2</pattern>
+        <template>
+            <srai> text PROGLANG 2 </srai> <br/>
+            <br/>
+            0. Go back
+        </template>
+    </category>
+    
+    <category>
+        <pattern>TEXT PROGLANG 3</pattern>
+        <template>
+            Cybersecurity: <br/>
+            - Network security protocols <br/>
+            - Hacking and penetration testing tools (Metasploit, Wireshark, Nmap) <br/>
+            - Encryption and cryptography <br/>
+            - Risk assessment and vulnerability management <br/>
+            - Firewall and intrusion detection systems <br/>
+            - Cybersecurity regulations (GDPR, CCPA)
+        </template>
+    </category>
+    <category>
+        <pattern>PROGLANG 3</pattern>
+        <template>
+            <srai> text PROGLANG 3 </srai> <br/>
+            <br/>
+            0. Go back
+        </template>
+    </category>
+    
+    <category>
+        <pattern>TEXT PROGLANG 4</pattern>
+        <template>
+            Systems Administration:  <br/>
+            - Operating system management (Linux, Windows Server) <br/>
+            - Network configuration and troubleshooting <br/>
+            - Virtualization tools (VMware, Hyper-V) <br/>
+            - Cloud computing platforms (AWS, Azure, Google Cloud) <br/>
+            - Scripting (Bash, PowerShell) <br/>
+            - System monitoring tools (Nagios, Zabbix) <br/>
+            - Data backup and recovery
+        </template>
+    </category>
+    <category>
+        <pattern>PROGLANG 4</pattern>
+        <template>
+            <srai> text PROGLANG 4 </srai> <br/>
+            <br/>
+            0. Go back
+        </template>
+    </category>
+    
+    <category>
+        <pattern>TEXT PROGLANG 5 </pattern>
+        <template>
+            AI/ML Engineering: <br/>
+            - Programming and scripting (Python, Java) <br/>
+            - Machine learning frameworks and tools (TensorFlow, PyTorch, Keras, Scikit-learn) <br/>
+            - Data modeling and preprocessing <br/>
+            - Mathematical foundations (linear algebra, calculus, statistics) <br/>
+            - Cloud-based AI services (AWS SageMaker, Google AI Platform) <br/>
+            - Natural language processing (NLP) <br/>
+            - Model deployment strategies (Docker, Kubernetes)
+        </template>
+    </category>
+    <category>
+        <pattern>PROGLANG 5</pattern>
+        <template>
+            <srai> text PROGLANG 5 </srai> <br/>
+            <br/>
+            0. Go back
+        </template>
+    </category>
+    
+    <category>
+        <pattern>PROGLANG ALL</pattern>
+        <template>
+            <srai>
+                do nop
+                    then print(1. )
+                    then text PROGLANG 1
+                    then delay(5)
+                    then print(2. )
+                    then text PROGLANG 2
+                    then delay(5)
+                    then print(3. )
+                    then text PROGLANG 3
+                    then delay(5)
+                    then print(4. )
+                    then text PROGLANG 4
+                    then delay(5)
+                    then print(5. )
+                    then text PROGLANG 5
+                    then delay(2)
+                    then printBreak(`That's all I've got for now, type 0 to go back.`)
+            </srai>
+        </template>
+    </category>
+    
+    
+</topic>    
+
+<!-- 3. Which occupation should I choose? -->
+<topic name="WHICHOCC">
+    
+    <category>
+        <pattern>INITIALIZE LPAREN WHICHOCC RPAREN</pattern>
+        <template>
+            <srai>
+                do WHICHOCCInit := TRUE
+                    then addNav(WHICHOCC 0 MAIN MENU)
+                    then addNav(WHICHOCC 1 QUIZ BEGIN)
+                    then addNav(WHICHOCC 2 WHICHOCC REJECT)
+            </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+        <template>
+            <srai> ifnot(dref WHICHOCCInit) initialize(WHICHOCC) </srai>
+            
+            That will depend on your skills and what you enjoy doing. Would you 
+            like to take a 25-item questionnaire to help you find out? <br/>
+            1. Sure<br/>
+            2. No Thanks<br/>
+        </template>
+    </category>
+    <category>
+        <pattern>WHICHOCC MENU</pattern>
+        <template><srai> access_menu() </srai></template>
+    </category>
+    
+    <category>
+        <pattern>WHICHOCC REJECT</pattern>
+        <template>
+            Okay! How else may I help you today?<br/>
+            <br/>
+            <srai> access_menu(MAIN) </srai>
+        </template>
+    </category>
+
+</topic>
+
+
+
+
+
+
+
+<!-- **************************** Menu Handlers **************************** -->
+
+
+<!-- access_menu() (Default Menu Handler) 
+    Navigates to the default menu of the current topic.
+-->
+<category>
+    <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+    <template>
+        <srai> access_menu(<get name="topic"/>) </srai>
+    </template>
+</category>
+
+<!-- access_menu(*T) (Topic Menu Handler) 
+    Navigates to the default menu of topic T.
+-->
+<category>
+    <pattern>ACCESS UNDERSCORE MENU LPAREN * RPAREN</pattern>
+    <template>
+        <srai> topic := <star/> </srai>
+        <srai> access_menu() </srai>
+    </template>
+</category>
+
+<!-- access_menu(*Topic *ID), goto(*Topic *ID), select(*Topic *ID) (Menu Item Selection)
+    Selects an item number Num from topic Topic's menu. Primarily used for menu
+    navigation and selection.
+-->
+<category>
+    <pattern>ACCESS UNDERSCORE MENU LPAREN * * RPAREN</pattern>
+    <template>
+        <srai> log(ENTERING access_menu(<star index="1"/> <star index="2"/>)) </srai>
+        <srai> <star index="1"/> <star index="2"/> </srai>
+    </template>
+</category>
+<!-- access_menu(*Topic *itemID) (Topic Menu Item Navigation)
+    Directly navigates to menu item itemID of topic Topic.
+    To avoid bugs, use all-caps for navigation.
+-->
+<category>
+    <pattern>ACCESS UNDERSCORE MENU LPAREN * ACCESS UNDERSCORE MENU RPAREN</pattern>
+    <template>
+        <srai> topic := <star/> </srai>
+        <srai> access_menu() </srai>
+    </template>
+</category>
+<!-- select(*Num) (Menu Option Selection) 
+    Selects the option with ID Num from the current topic's menu.
+-->
+<!--<category>-->
+<!--    <pattern>SELECT LPAREN <set>number</set> RPAREN</pattern>-->
+<!--    <template>-->
+<!--        <srai> -->
+<!--            do log(ENTERING select(<star/>))-->
+<!--                then access_menu(<get name="topic"/> <star/>) -->
+<!--        </srai>-->
+<!--    </template>-->
+<!--</category>-->
+<category>
+    <pattern>SELECT LPAREN <set>number</set> RPAREN</pattern>
+    <template>
+        <set var="path">
+            <srai> dref <get name="topic"/><star/>_PTR </srai>
+        </set>
+        <srai> 
+            do log(ENTERING select(<star/>))
+                then access_menu(<get var="path"/>) 
+        </srai>
+    </template>
+</category>
+
+
+<!-- *************************** TEXT HANDLERS *************************** -->
+<!-- defaultText(), defaultText() Gets the current topic's default text content -->
+<category>
+    <pattern>DEFAULTTEXT LPAREN RPAREN</pattern>
+    <template><srai> text(<get name="topic"/> 1) </srai></template>
+</category>
+<!-- text()  Displays the current topic's default text content -->
+<category>
+    <pattern>TEXT LPAREN RPAREN</pattern>
+    <template><srai> defaultText() </srai></template>
+</category>
+<!-- text(*Num)  Displays the text content with ID Num within the current topic -->
+<category>
+    <pattern>TEXT LPAREN <set>number</set> RPAREN</pattern>
+    <template><srai> text(<get name="topic"/> <star/>) </srai></template>
+</category>
+
+<!-- BOOKMARK -->
+<!-- text(*Topic *Num) (FALLBACK) 
+    This category will only match if the Topic Num combination does not exist.
+-->
+<category>
+    <pattern>TEXT LPAREN * <set>number</set> RPAREN</pattern>
+    <template>
+        <think>
+            <set var="inputTopic"><star index="1"/></set>
+            <set var="inputID"><star index="2"/></set>
+            <set var="topicValue"><srai>dref topic</srai></set>
+        </think>
+        <srai> 
+            <!-- If the topic does not match, then switch and try again -->
+            if(<srai> unequal(<get var="topicValue"/> <get var="inputTopic"/>) </srai>)
+                log(`Setting topic to <get var="inputTopic"/>`)
+                then topic := `<get var="inputTopic"/>`
+                then log(`Getting text for <get var="inputTopic"/> <get var="inputID"/>`)
+                then text(<get var="inputTopic"/> <get var="inputID"/>) 
+            else return `ERROR: No text found for path <star index="1"/> <get var="inputID"/><br/>`
+        </srai>
+        
+    </template>
+</category>
+
+
+<!-- *************************** Reusable Helpers *************************** -->
+<!-- These functions are used by more than one menu without variations. -->
+
+<!-- listJobTypes() 
+    Lists all 5 occupations and a 6th option to explain all occupations. Does not
+    include option 0.
+-->
+<category>
+    <pattern>LISTJOBTYPES LPAREN RPAREN</pattern>
+    <template>
+        1. Software Developer<br/>
+        2. Data Scientist<br/>
+        3. Cybersecurity Analyst<br/>
+        4. Systems Administrator<br/>
+        5. AI/ML Engineer<br/>
+        6. Tell me about all of these occupations<br/>
+    </template>
+</category>
+
+<!-- "let's go back" => Activate item 0 -->
+<category>
+    <pattern>$^ GO BACK ^</pattern>
+    <template>
+        <srai> log(ENTERING <star index="1"/> go back <star index="2"/>) </srai>
+        <srai> then select(0) </srai>
+    </template>
+</category>
+
+<!-- addNav(*Topic *ID *Destination) 
+    Creates a navigation pointer between the Topic, menu ID, and Destination address.
+-->
+<category>
+    <pattern>ADDNAV LPAREN * * * RPAREN</pattern>
+    <template>
+        <srai> log(ENTERING addNav(<star index="1"/><star index="2"/> <star index="3"/>)) </srai>
+        <srai> <star index="1"/><star index="2"/>_PTR := <star index="3"/> </srai>
+    </template>
+</category>
+
+
+
+
+
+
+
+
+</aiml>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

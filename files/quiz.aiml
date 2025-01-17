@@ -1,0 +1,508 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+    
+<topic name="QUIZ">
+    
+    <category>
+        <pattern>INITIALIZE LPAREN QUIZ RPAREN</pattern>
+        <template>
+            <!--  -->
+            <srai>
+                do log(Assigning quiz input mappings)
+                    then addNav(QUIZ 0 MAIN MENU)
+                    then addNav(QUIZ 1 QUIZ INPUT1)
+                    then addNav(QUIZ 2 QUIZ INPUT2)
+                    then addNav(QUIZ 3 QUIZ INPUT3)
+                    then addNav(QUIZ 4 QUIZ INPUT4)
+                    then addNav(QUIZ 5 QUIZ INPUT5)
+                    
+            </srai>
+            <srai>
+                do log(Assigning categories metadata)
+                    then highScore := 0
+                    then bestCategory := null
+                    then currCat := SOFTDEV
+                    then currQuestID := 1
+
+                    then SOFTDEV_score := 0
+                    then DATASCI_score := 0
+                    then CYBERSEC_score := 0
+                    then SYSADMIN_score := 0
+                    then AIML_score := 0
+                    
+                    then SOFTDEV_count := 5
+                    then DATASCI_count := 5
+                    then CYBERSEC_count := 5
+                    then SYSADMIN_count := 5
+                    then AIML_count := 5
+            </srai>
+            <srai>
+                do log(Assigning successor mappings)
+                    then nextSOFTDEV := DATASCI
+                    then nextDATASCI := CYBERSEC
+                    then nextCYBERSEC := SYSADMIN
+                    then nextSYSADMIN := AIML
+                    then nextAIML := NULL
+                    
+                    then counter := 1
+                    then next1 := 2
+                    then next2 := 3
+                    then next3 := 4
+                    then next4 := 5
+                    then next5 := 1
+            </srai>
+        </template>
+    </category>
+    <!-- QUIZ BEGIN -->
+    <category>
+        <pattern>QUIZ BEGIN</pattern>
+        <template>
+            <srai> initialize(QUIZ) </srai>
+
+            The following questionnaire is 25 questions long, and consists of five
+            questions per occupational category. Answer each question on a scale
+            of 1 to 5, where 1 is the worst and 5 is the best.<br/>
+            <srai> delay(1) </srai>
+            Ready? Let's begin.<br/>
+            
+            <srai> beginQuiz() </srai>
+        </template>
+    </category>
+    <!-- BOOKMARK -->
+    <category>
+        <pattern>BEGINQUIZ LPAREN RPAREN</pattern>
+        <template>
+            <!-- Ask first question -->
+            <srai> ask <get name="currCat"/> <get name="counter"/> </srai>
+            <think>
+                <srai> listen() </srai>
+            </think>
+        </template>
+    </category>
+    <category>
+        <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+        <template><srai> QUIZ BEGIN </srai></template>
+    </category>
+    <category>
+        <pattern>$ACCESS UNDERSCORE MENU LPAREN QUIZ BEGIN RPAREN</pattern>
+        <template>
+            <srai> QUIZ BEGIN </srai>
+        </template>
+    </category>
+    
+    <!-- ask *Category *QuestID 
+        Asks the given question.
+    -->
+    <category>
+        <pattern>ASK * <set>number</set></pattern>
+        <template>
+
+            <think>
+            <set var="question">
+                <map name="questions">
+                    <denormalize><star index="1"/> <star index="2"/></denormalize>
+                </map>
+            </set>
+            <srai> 
+                currCat := <star index="1"/>
+            </srai>
+            <srai>
+                currQuestID := <star index="2"/>
+            </srai>
+            </think>
+            
+            <get var="question"/>
+        </template>
+    </category>
+    
+    <!-- ASK NEXT QUESTION -->
+    <!-- askNextQuestion() - Returns the category and ID of the next question -->
+    <category>
+        <pattern>ASKNEXTQUESTION LPAREN RPAREN</pattern>
+        <template>
+            
+            <think>
+            <!-- Get next question ID -->
+            <set var="nextQuestID">
+                <srai> next(<get name="currQuestID"/>) </srai>
+            </set>
+            <!-- Determine if next ID has a lower value than the current ID (5-1) -->
+            <set var="goToNextCategory">
+                <srai> <get var="nextQuestID"/> :== 1 </srai>
+            </set>
+            <srai>
+                if(<get var="goToNextCategory"/>) 
+                    currCat := `<srai> next(<get name="currCat"/>) </srai>`
+                    then log(Advancing to category <get name="currCat"/>)
+                    then currQuestID := `<get var="nextQuestID"/>`
+                    then log(Advancing to question <get name="currQuestID"/>)
+            </srai>
+            <set var="endQuiz"><srai> NULL :== <get name="currCat"/> </srai></set>
+            </think>
+            
+            <!-- Chaining commands together doesn't work correctly here, use condition -->
+            <condition var="endQuiz" value="FALSE">
+                <srai> ask <get name="currCat"/> <get var="nextQuestID"/> </srai>
+                <srai> listen() </srai>
+            </condition>
+            <condition var="endQuiz" value="TRUE">
+                <srai> tally results </srai>
+            </condition>
+                        
+        </template>
+    </category>
+
+    <!-- USER INPUT HANDLERS -->
+    <category>
+        <pattern>$ACCESS UNDERSCORE MENU LPAREN QUIZ * RPAREN</pattern>
+        <template>
+            <srai> askNextQuestion() </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>$QUIZ INPUT <set>number</set></pattern>
+        <template>
+            <srai> access_menu(QUIZ INPUT <star/>) </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>*</pattern>
+        <template>
+            <star/> is not a valid input. Please respond with a number between 1 and 5, or type `0` to quit.
+        </template>
+    </category>
+    
+    <category>
+        <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+        <template>
+            <srai> askNextQuestion() </srai>
+        </template>
+    </category>
+    
+    <category>
+        <pattern>TALLY RESULTS</pattern>
+        <template>
+            Congratulations, you might be a good fit as a <srai>getTitle(<get name="bestCategory"/>)</srai>!<br/>
+            <br/>
+            Here are all of your scores:<br/>
+                Software Developer: <srai>getScore(SOFTDEV)</srai><br/>
+                Data Scientist: <srai>getScore(DATASCI)</srai><br/>
+                Cybersecurity Analyst: <srai>getScore(CYBERSEC)</srai><br/>
+                Systems Administrator: <srai>getScore(SYSADMIN)</srai><br/>
+                AI/ML Engineer: <srai>getScore(AIML)</srai><br/>
+                <br/>
+        </template>
+    </category>
+    
+    <category>
+        <pattern>NEXT LPAREN * RPAREN</pattern>
+        <template>
+            <srai>dref next<star/></srai>
+        </template>
+    </category>
+
+    
+</topic>
+
+<category>
+    <pattern>LISTEN LPAREN RPAREN</pattern>
+    <template>
+        <srai> topic := LISTEN </srai>
+    </template>
+</category>
+
+<!-- LISTENS FOR USER INPUT WHEN ACTIVE -->
+<topic name="LISTEN">
+    
+    <category>
+        <pattern><set>number</set></pattern>
+        <template>
+            <srai> receive(<star/>) </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>*</pattern>
+        <topic>LISTEN</topic>
+        <template>
+            Please respond with a number between 1 and 5, or type `0` to quit.
+        </template>
+    </category>
+        
+    <category>
+        <pattern>RECEIVE LPAREN <set>number</set> RPAREN</pattern>
+        <template>
+                
+            <think>
+            <srai> addScore(<star/>) </srai>
+            <srai> topic := QUIZ </srai>
+            </think>
+            
+            <srai> askNextQuestion() </srai>
+        </template>
+    </category>
+    
+    <category>
+        <pattern>ADDSCORE LPAREN <set>number</set> RPAREN</pattern>
+        <template>
+
+            <think>
+            <srai> <get name="currCat"/>_score += <star/> </srai>
+            <set var="currScore"><srai> getScore() </srai></set>
+            <set var="highScoreBeat">
+                <srai> lt(<get name="highScore"/> <get var="currScore"/>) </srai>
+            </set>
+            </think>
+            
+            <!-- Check if current high score was beat -->
+            <srai>
+                if(<get var="highScoreBeat"/>) 
+                    log(`High score beat, new high score: <get var="currScore"/>`)
+                    then highScore := `<get var="currScore"/>`
+                    then log(`Setting bestCategory to <get name="currCat"/>`)
+                    then bestCategory := `<get name="currCat"/>`
+            </srai>
+            
+        </template>
+    </category>
+
+</topic>
+    
+<!-- *************************** CATEGORY GETTERS *************************** -->
+    
+<category>
+    <pattern>GETSCORE LPAREN * RPAREN</pattern>
+    <template>
+        <!--<srai> get(<star/>_score) </srai>-->
+        <srai> return <srai> get(<star/>_score) </srai> </srai>
+    </template>
+</category>
+<category>
+    <pattern>GETSCORE LPAREN RPAREN</pattern>
+    <template>
+        <srai> return <srai> get(<get name="currCat"/>_score) </srai> </srai>
+    </template>
+</category>
+<category>
+    <pattern>GETTITLE LPAREN * RPAREN</pattern>
+    <template>
+        <think>
+            <set var="titleID"><star/></set>
+        </think>
+        <condition var="titleID">
+            <li value="SOFTDEV">Software Developer</li>
+            <li value="DATASCI">Data Scientist</li>
+            <li value="CYBERSEC">Cybersecurity Analyst</li>
+            <li value="SYSADMIN">Systems Administrator</li>
+            <li value="AIML">AI/ML Engineer</li>
+        </condition>
+    </template>
+</category>
+
+
+<!-- ******************************* HELPERS ******************************* -->
+
+
+<category>
+    <pattern>FIRST LPAREN * ^ RPAREN</pattern>
+    <template>
+        <srai> return <star index="1"/> </srai>
+    </template>
+</category>
+<category>
+    <pattern>REST LPAREN * ^ RPAREN</pattern>
+    <template>
+        <srai> return <star index="2"/> </srai>
+    </template>
+</category>
+
+
+<!-- push_left(*V *Vlist) Pushes value V to the left-side of value array Vlist  -->
+<category>
+    <pattern>PUSH UNDERSCORE LEFT LPAREN * * RPAREN</pattern>
+    <template>
+        <srai> return <star index="1"/> <star index="2"/> </srai>
+    </template>
+</category>
+<!-- push_left(*V *Vlist) Pushes value V to the right-side of value array Vlist  -->
+<category>
+    <pattern>PUSH UNDERSCORE RIGHT LPAREN * * RPAREN</pattern>
+    <template>
+        <srai> return <star index="2"/> <star index="1"/> </srai>
+    </template>
+</category>
+
+<!-- pop(*Vlist) Removes and returns the first element of array Vlist -->
+<category>
+    <pattern>POP LPAREN * RPAREN</pattern>
+    <template>
+        <srai> return <srai> first(<star/>) </srai> </srai>
+    </template>
+</category>
+
+
+<!-- ******************************* OPERATORS ******************************* -->
+<!-- ************************** PREDICATE ADDITION ************************** -->
+<category>
+    <pattern>* PLUS EQUALS <set>number</set></pattern>
+    <template>
+        <think>
+            <set var="predVal"><srai> dref <star index="1"/> </srai></set>
+            <set var="userInput"><star index="2"/></set>
+            <set var="sum">
+                <srai> <get var="predVal"/> + <get var="userInput"/> </srai>
+            </set>
+        </think>
+
+        <srai> 
+            if(<srai> isNumber(<get var="sum"/>) </srai>) 
+                <star index="1"/> := <get var="sum"/>
+        </srai>
+
+    </template>
+</category>
+<!-- N1 + N2 (Value Addition) -->
+<category>
+    <pattern><set>number</set> PLUS <set>number</set></pattern>
+    <template>
+        <srai> 
+            <srai> <star index="1"/>++ </srai> + <srai> <star index="2"/>-- </srai> 
+        </srai>
+    </template>
+</category>
+<!-- N1 + 0 (Value Addition - Termination) -->
+<category>
+    <pattern><set>number</set> PLUS 0</pattern>
+    <template>
+        <srai> return <star/> </srai>
+    </template>
+</category>
+
+
+<!-- ************************ LESS THAN COMPARISON ************************ -->
+<!-- lt(*N1 *N2) (Less Than Operator) 
+    Returns TRUE if number N1 is less than number N2
+-->
+<category>
+    <pattern>LT LPAREN <set>number</set> <set>number</set> RPAREN</pattern>
+    <template>
+            
+        <think>
+        <set var="ValuesEqual">
+            <srai> equal(<star index="1"/> <star index="2"/>) </srai>
+        </set>
+            
+        <!-- Count Digits -->
+        <set var="N1DigitCount"><srai> count(<star index="1"/>) </srai></set>
+        <set var="N2DigitCount"><srai> count(<star index="2"/>) </srai></set>
+        <set var="DigitCountEqual">
+            <srai> equal(<get var="N1DigitCount"/> <get var="N2DigitCount"/>) </srai>
+        </set>
+        <set var="ValuesEqual DigitCountEqual">
+            <get var="ValuesEqual"/> <get var="DigitCountEqual"/> 
+        </set>
+        </think>
+        
+        <!-- Eliminate equal numbers -->
+        <!-- Otherwise, recurse for numbers with unequal digit counts -->
+        <!-- Otherwise, perform comparison -->
+        <condition var="ValuesEqual" value="TRUE">
+            <srai> return FALSE </srai>
+        </condition>
+        <condition var="DigitCountEqual" value="FALSE">
+            <srai> lt(<get var="N1DigitCount"/> <get var="N2DigitCount"/>) </srai>
+        </condition>
+        <condition var="ValuesEqual DigitCountEqual" value="FALSE TRUE">
+            <srai>
+                <explode><star index="1"/></explode> :LESSTHAN <explode><star index="2"/></explode>
+            </srai>            
+        </condition>
+    </template>
+</category>
+
+<!-- *N1 *N1list :lessthan *N2 *N2list (Inner Multi-Digit) -->
+<category>
+    <pattern><set>number</set> * COLON LESSTHAN <set>number</set> * </pattern>
+    <template>
+
+        <think>
+        <set var="N1_LT_N2">
+            <srai> <star index="1"/> :LESSTHAN <star index="3"/> </srai>
+        </set>
+        </think>
+
+        <srai>
+            if(<get var="N1_LT_N2"/>) return TRUE
+            else return <srai><star index="2"/> :LESSTHAN <star index="4"/></srai>
+        </srai>
+
+    </template>
+</category>
+
+<!-- Single-Digit -->
+<category>
+    <pattern><set>number</set> COLON LESSTHAN <set>number</set> </pattern>
+    <template>
+        <map name="comparisons">
+            <star index="1"/> <star index="2"/>
+        </map>
+    </template>
+</category>
+
+<!-- Unequal digit count -->
+<category>
+    <pattern>UNKNOWN COLON LESSTHAN <set>number</set></pattern>
+    <template><srai> return TRUE </srai></template>
+</category>
+<!-- Unequal digit count -->
+<category>
+    <pattern><set>number</set> COLON LESSTHAN unknown</pattern>
+    <template><srai> return FALSE </srai></template>
+</category>
+
+
+<!-- ********************* Character and Digit Counting ********************* -->
+
+<!-- count(*List) (List Length) 
+    Counts the number of characters in a String or digits in a Number.
+-->
+<category>
+    <pattern>COUNT LPAREN * RPAREN</pattern>
+    <template>
+
+        <think>
+        <set var="List"><explode><star/></explode></set>
+        <set var="ListEl"> <srai> first(<get var="List"/>) </srai></set>
+        <set var="ListRem"><srai> rest(<get var="List"/>) </srai></set>
+        </think>
+
+        <srai> count(0 <get var="ListEl"/> <get var="ListRem"/>) </srai>
+    </template>
+</category>
+<category>
+    <pattern>COUNT LPAREN <set>number</set> * ^ RPAREN</pattern>
+    <template>
+        <srai> count(<srai> <star index="1"/>++ </srai> <star index="3"/>) </srai>
+    </template>
+</category>
+<category>
+    <pattern>COUNT LPAREN <set>number</set> unknown RPAREN</pattern>
+    <template>
+        <srai> return <star/> </srai>
+    </template>
+</category>
+
+</aiml>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
