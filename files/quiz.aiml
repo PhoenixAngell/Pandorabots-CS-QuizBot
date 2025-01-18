@@ -271,11 +271,18 @@
         </template>
     </category>
     <category>
+        <pattern>0</pattern>
+        <template>
+            <srai> access_menu(MAIN) </srai>
+        </template>
+    </category>
+    <category>
         <pattern><set>number</set></pattern>
         <template>
             Please respond with a number between 1 and 5, or type `0` to quit.
         </template>
     </category>
+    
         
     <category>
         <pattern>RECEIVE LPAREN <set>number</set> RPAREN</pattern>
