@@ -419,44 +419,72 @@
     </template>
 </category>
 
-<!-- *N1 *N1list :lessthan *N2 *N2list (Inner Multi-Digit) -->
+
+<!-- lt(*N1 *N2) (Less Than Operator) 
+    Returns TRUE if number N1 is less than number N2
+-->
 <category>
-    <pattern><set>number</set> * COLON LESSTHAN <set>number</set> * </pattern>
+    <pattern>LT LPAREN <set>number</set> <set>number</set> RPAREN</pattern>
     <template>
-
+            
         <think>
-        <set var="N1_LT_N2">
-            <srai> <star index="1"/> :LESSTHAN <star index="3"/> </srai>
-        </set>
+            <set var="N1"><explode><star index="1"/></explode></set>
+            <set var="N2"><explode><star index="2"/></explode></set>
         </think>
-
-        <srai>
-            if(<get var="N1_LT_N2"/>) return TRUE
-            else return <srai><star index="2"/> :LESSTHAN <star index="4"/></srai>
-        </srai>
-
+        
+        <srai> <get var="N1"/> :lessthan <get var="N2"/> </srai>
+        
     </template>
 </category>
 
-<!-- Single-Digit -->
+<!-- *N1 :lessthan *N2 (Less Than Operator - Inner Recursive Function) -->
 <category>
-    <pattern><set>number</set> COLON LESSTHAN <set>number</set> </pattern>
+    <pattern><set>number</set> ^ COLON LESSTHAN <set>number</set> ^ </pattern>
+    <template>
+
+        <think>
+            <set var="equalityResult">
+                <srai> <star index="1"/> :== <star index="3"/> </srai>
+            </set>
+        </think>
+        <condition var="equalityResult">
+            <!-- If the digits are the same, advance to the remaining digit pairs -->
+            <li value="TRUE">
+                <srai> <star index="2"/> :lessthan <star index="4"/> </srai>
+            </li>
+            <!-- Otherwise, return the comparison result -->
+            <li><srai> <star index="1"/> :sdlt <star index="3"/> </srai></li>
+        </condition>
+
+    </template>
+</category>
+<!-- Unequal digit count: N2 has more digits, N1 is less than N2 -->
+<category>
+    <pattern>UNKNOWN COLON LESSTHAN <set>number</set></pattern>
+    <template><srai> return `TRUE` </srai></template>
+</category>
+<!-- Unequal digit count: N1 has more digits, N1 is greater than N2 -->
+<category>
+    <pattern><set>number</set> COLON LESSTHAN UNKNOWN</pattern>
+    <template><srai> return `FALSE` </srai></template>
+</category>
+<!-- Equal digit count: N1 and N2 are equal -->
+<category>
+    <pattern>UNKNOWN COLON LESSTHAN UNKNOWN</pattern>
+    <template><srai> return `FALSE` </srai></template>
+</category>
+
+<!-- *N1 :sdlt *N2  Single-Digit Comparison
+    Returns TRUE if N1 is less than N2, FALSE if not. Returns `unknown` if N1 or
+    N2 have more than one digit.
+-->
+<category>
+    <pattern><set>number</set> COLON SDLT <set>number</set> </pattern>
     <template>
         <map name="comparisons">
             <star index="1"/> <star index="2"/>
         </map>
     </template>
-</category>
-
-<!-- Unequal digit count -->
-<category>
-    <pattern>UNKNOWN COLON LESSTHAN <set>number</set></pattern>
-    <template><srai> return TRUE </srai></template>
-</category>
-<!-- Unequal digit count -->
-<category>
-    <pattern><set>number</set> COLON LESSTHAN unknown</pattern>
-    <template><srai> return FALSE </srai></template>
 </category>
 
 
