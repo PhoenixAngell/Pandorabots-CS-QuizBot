@@ -137,6 +137,12 @@
     <pattern>RESET</pattern>
     <template>
         <srai> topic := `INTRO` </srai>
+    </template>
+</category>
+<category>
+    <pattern>RESET TO MAIN</pattern>
+    <template>
+        <srai> topic := `INTRO` </srai>
         <srai> access_menu() </srai>
     </template>
 </category>
