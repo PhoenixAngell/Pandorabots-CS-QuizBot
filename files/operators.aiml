@@ -169,7 +169,6 @@
         <think>
             <set name="return"><denormalize><star/></denormalize></set>
         </think>
-        <srai> log( RETURNING <get name="return"/> ) </srai>
         <get name="return"/>
     </template>
 </category>
@@ -226,7 +225,6 @@
                 <srai> eval(<star/>) </srai>
             </set>
         </think>
-        <srai> log( RETURNING <get name="return"/> ) </srai>
         <srai> return <get var="result"/> </srai>
     </template>
 </category>
@@ -256,7 +254,6 @@
 <category>
     <pattern>DELAY LPAREN <set>number</set> RPAREN</pattern>
     <template>
-        <srai> log(ENTERING delay(<star/>)) </srai>
         <denormalize><delay><star/></delay></denormalize>
     </template>
 </category>
@@ -729,7 +726,6 @@
     <template>
         
         <think>
-            <srai> log(CALLING <star/>) </srai>
             <set var="result">
                 <srai> <star/> </srai>
             </set>

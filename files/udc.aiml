@@ -73,7 +73,9 @@
             <li>I'm sorry, I don't recognize "<star/>". Try entering a menu number.</li>
             <li>Can you say "<star/>" differently or enter a number from the list?</li>
         </random>
-        <br/>Or, type 0 to return to the MAIN menu. 
+        <!--<br/>Or, type 0 to return to the MAIN menu. -->
+        <srai>delay(1)</srai>
+        <srai>access_menu()</srai>
     </template>
 </category>
 
@@ -366,8 +368,7 @@
         </category>
         
         <category>
-            <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
-            <that>^ WHICH ONE ^ LEARN MORE ^</that>
+            <pattern>SOFTDEV MENU</pattern>
             <template>
                 <srai> ifnot(dref JOBTYPESInit) initialize(SOFTDEV) </srai>
     
@@ -377,8 +378,8 @@
             </template>
         </category>
         <category>
-            <pattern>SOFTDEV MENU</pattern>
-            <template><srai> access_menu() </srai></template>
+            <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
+            <template><srai> SOFTDEV MENU </srai></template>
         </category>
         
         <category>
@@ -415,7 +416,6 @@
         </category>
         <category>
             <pattern>DATASCI MENU</pattern>
-            <that>^ WHICH ONE ^ LEARN MORE ^</that>
             <template>
                 <srai> ifnot(dref DATASCIInit) initialize(DATASCI) </srai>
                 <srai> defaultText() </srai>
@@ -469,7 +469,6 @@
         </category>
         <category>
             <pattern>CYBERSEC MENU</pattern>
-            <that>^ WHICH ONE ^ LEARN MORE ^</that>
             <template>
                 <srai> ifnot(dref CYBERSECInit) initialize(CYBERSEC) </srai>
                 <srai> defaultText() </srai>
@@ -513,7 +512,6 @@
         </category>
         <category>
             <pattern>SYSADMIN MENU</pattern>
-            <that>^ WHICH ONE ^ LEARN MORE ^</that>
             <template>
                 <srai> ifnot(dref SYSADMIN) initialize(SYSADMIN) </srai>
                 <srai> defaultText() </srai>
@@ -548,7 +546,6 @@
         
         <category>
             <pattern>AIML MENU</pattern>
-            <that>^ WHICH ONE ^ LEARN MORE ^</that>
             <template>
                 <srai> ifnot(DREF AIMLInit) initialize(AIML) </srai>
                 <srai> defaultText() </srai>
@@ -839,6 +836,7 @@
     <pattern>ACCESS UNDERSCORE MENU LPAREN * * RPAREN</pattern>
     <template>
         <srai> log(ENTERING access_menu(<star index="1"/> <star index="2"/>)) </srai>
+        <srai> topic := <star index="1"/> </srai>
         <srai> <star index="1"/> <star index="2"/> </srai>
     </template>
 </category>
@@ -961,30 +959,4 @@
     </template>
 </category>
 
-
-
-
-
-
-
-
 </aiml>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

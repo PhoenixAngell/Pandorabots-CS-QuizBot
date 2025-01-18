@@ -6,6 +6,7 @@
     <category>
         <pattern>INITIALIZE LPAREN QUIZ RPAREN</pattern>
         <template>
+            <srai> log( INITIALIZING QUIZ ) </srai>
             <!--  -->
             <srai>
                 do log(Assigning quiz input mappings)
@@ -86,6 +87,7 @@
     <category>
         <pattern>$ACCESS UNDERSCORE MENU LPAREN QUIZ BEGIN RPAREN</pattern>
         <template>
+            <srai> log(ENTERING access_menu(QUIZ BEGIN) ALIAS FOR `QUIZ BEGIN`) </srai>
             <srai> QUIZ BEGIN </srai>
         </template>
     </category>
@@ -122,6 +124,8 @@
         <template>
             
             <think>
+            <srai> log(ENTERING askNextQuestion()) </srai>
+
             <!-- Get next question ID -->
             <set var="nextQuestID">
                 <srai> next(<get name="currQuestID"/>) </srai>
@@ -140,7 +144,6 @@
             <set var="endQuiz"><srai> NULL :== <get name="currCat"/> </srai></set>
             </think>
             
-            <!-- Chaining commands together doesn't work correctly here, use condition -->
             <condition var="endQuiz" value="FALSE">
                 <srai> ask <get name="currCat"/> <get var="nextQuestID"/> </srai>
                 <srai> listen() </srai>
@@ -148,6 +151,12 @@
             <condition var="endQuiz" value="TRUE">
                 <srai> tally results </srai>
             </condition>
+            
+            <!--<srai> ask <get name="currCat"/> <get var="nextQuestID"/> </srai>-->
+
+            <!--<think>-->
+            <!--<srai> listen() </srai>-->
+            <!--</think>-->
                         
         </template>
     </category>
@@ -156,6 +165,8 @@
     <category>
         <pattern>$ACCESS UNDERSCORE MENU LPAREN QUIZ * RPAREN</pattern>
         <template>
+            <srai> log(ENTERING `QUIZ INPUT <star/>`) </srai>
+            <!-- Ask next question -->
             <srai> askNextQuestion() </srai>
         </template>
     </category>
@@ -191,12 +202,15 @@
                 Systems Administrator: <srai>getScore(SYSADMIN)</srai><br/>
                 AI/ML Engineer: <srai>getScore(AIML)</srai><br/>
                 <br/>
+            Type 0 to return to the main menu.<br/>
         </template>
     </category>
+
     
     <category>
         <pattern>NEXT LPAREN * RPAREN</pattern>
         <template>
+            <srai>log(ENTERING next(<star/>))</srai>
             <srai>dref next<star/></srai>
         </template>
     </category>
@@ -217,6 +231,7 @@
     <category>
         <pattern><set>number</set></pattern>
         <template>
+            <srai> log(ENTERING NUMBER LISTENER: <star/>, TOPIC: <get name="topic"/>) </srai>
             <srai> receive(<star/>) </srai>
         </template>
     </category>
@@ -244,10 +259,12 @@
     <category>
         <pattern>ADDSCORE LPAREN <set>number</set> RPAREN</pattern>
         <template>
+            <srai> ENTERING addScore(<star/>) </srai>
 
             <think>
             <srai> <get name="currCat"/>_score += <star/> </srai>
             <set var="currScore"><srai> getScore() </srai></set>
+            <srai> log(Comparing highScore <get name="highScore"/> to current score <get var="currScore"/>) </srai>
             <set var="highScoreBeat">
                 <srai> lt(<get name="highScore"/> <get var="currScore"/>) </srai>
             </set>
@@ -255,13 +272,12 @@
             
             <!-- Check if current high score was beat -->
             <srai>
-                if(<get var="highScoreBeat"/>) 
-                    log(`High score beat, new high score: <get var="currScore"/>`)
+                if(<get var="highScoreBeat"/>) log(High score beat, new high score: <get var="currScore"/>)
                     then highScore := `<get var="currScore"/>`
-                    then log(`Setting bestCategory to <get name="currCat"/>`)
+                    then log(Setting bestCategory to <get name="currCat"/>)
                     then bestCategory := `<get name="currCat"/>`
             </srai>
-            
+            <srai> log(EXITING addScore(<star/>)) </srai>
         </template>
     </category>
 
@@ -345,25 +361,33 @@
 <category>
     <pattern>* PLUS EQUALS <set>number</set></pattern>
     <template>
+        <srai> log(ENTERING <star index="1"/> += <star index="2"/>) </srai>
         <think>
             <set var="predVal"><srai> dref <star index="1"/> </srai></set>
             <set var="userInput"><star index="2"/></set>
             <set var="sum">
                 <srai> <get var="predVal"/> + <get var="userInput"/> </srai>
             </set>
+            <srai> 
+                log(
+                    predVal: <get var="predVal"/>,
+                    userInput: <get var="userInput"/>,
+                    sum: <get var="sum"/>
+                ) 
+            </srai>
         </think>
-
         <srai> 
             if(<srai> isNumber(<get var="sum"/>) </srai>) 
                 <star index="1"/> := <get var="sum"/>
         </srai>
-
+        <srai> log(EXITING <star index="1"/> += <star index="2"/>) </srai>
     </template>
 </category>
 <!-- N1 + N2 (Value Addition) -->
 <category>
     <pattern><set>number</set> PLUS <set>number</set></pattern>
     <template>
+        <srai> log(ENTERING INNER ADDITION FOR N1: <star index="1"/>, N2: <star index="2"/>) </srai>
         <srai> 
             <srai> <star index="1"/>++ </srai> + <srai> <star index="2"/>-- </srai> 
         </srai>
@@ -387,63 +411,87 @@
     <template>
             
         <think>
-            <set var="N1"><explode><star index="1"/></explode></set>
-            <set var="N2"><explode><star index="2"/></explode></set>
+        <set var="ValuesEqual">
+            <srai> equal(<star index="1"/> <star index="2"/>) </srai>
+        </set>
+            
+        <!-- Count Digits -->
+        <set var="N1DigitCount"><srai> count(<star index="1"/>) </srai></set>
+        <set var="N2DigitCount"><srai> count(<star index="2"/>) </srai></set>
+        <set var="DigitCountEqual">
+            <srai> equal(<get var="N1DigitCount"/> <get var="N2DigitCount"/>) </srai>
+        </set>
+        <set var="ValuesEqual DigitCountEqual">
+            <get var="ValuesEqual"/> <get var="DigitCountEqual"/> 
+        </set>
         </think>
         
-        <srai> <get var="N1"/> :lessthan <get var="N2"/> </srai>
-        
+        <!-- Eliminate equal numbers -->
+        <!-- Otherwise, recurse for numbers with unequal digit counts -->
+        <!-- Otherwise, perform comparison -->
+        <condition var="ValuesEqual" value="TRUE">
+            <srai> return FALSE </srai>
+        </condition>
+        <condition var="DigitCountEqual" value="FALSE">
+            <srai> lt(<get var="N1DigitCount"/> <get var="N2DigitCount"/>) </srai>
+        </condition>
+        <condition var="ValuesEqual DigitCountEqual" value="FALSE TRUE">
+            <srai>
+                <explode><star index="1"/></explode> :LESSTHAN <explode><star index="2"/></explode>
+            </srai>            
+        </condition>
     </template>
 </category>
 
-<!-- *N1 :lessthan *N2 (Less Than Operator - Inner Recursive Function) -->
+<!-- *N1 *N1list :lessthan *N2 *N2list (Inner Multi-Digit) -->
 <category>
-    <pattern><set>number</set> ^ COLON LESSTHAN <set>number</set> ^ </pattern>
+    <pattern><set>number</set> * COLON LESSTHAN <set>number</set> * </pattern>
     <template>
 
         <think>
-            <set var="equalityResult">
-                <srai> <star index="1"/> :== <star index="3"/> </srai>
-            </set>
+        <set var="N1_EQUALS_N2">
+            <srai> <star index="1"/> :== <star index="3"/> </srai>
+        </set>
+        <set var="N1_LT_N2">
+            <srai> <star index="1"/> :LESSTHAN <star index="3"/> </srai>
+        </set>
+        <set var="N1_GT_N2">
+            <srai> <star index="3"/> :LESSTHAN <star index="1"/> </srai>
+        </set>
         </think>
-        <condition var="equalityResult">
-            <!-- If the digits are the same, advance to the remaining digit pairs -->
-            <li value="TRUE">
-                <srai> <star index="2"/> :lessthan <star index="4"/> </srai>
-            </li>
-            <!-- Otherwise, return the comparison result -->
-            <li><srai> <star index="1"/> :sdlt <star index="3"/> </srai></li>
-        </condition>
+
+        <srai>
+            if(<get var="N1_LT_N2"/>) return TRUE
+        </srai>
+        <srai>
+            else if(<get var="N1_EQUALS_N2"/>) <star index="2"/> :LESSTHAN <star index="4"/>
+        </srai>
+        <srai>
+            else if(<get var="N1_GT_N2"/>) return FALSE
+        </srai>
 
     </template>
 </category>
-<!-- Unequal digit count: N2 has more digits, N1 is less than N2 -->
-<category>
-    <pattern>UNKNOWN COLON LESSTHAN <set>number</set></pattern>
-    <template><srai> return `TRUE` </srai></template>
-</category>
-<!-- Unequal digit count: N1 has more digits, N1 is greater than N2 -->
-<category>
-    <pattern><set>number</set> COLON LESSTHAN UNKNOWN</pattern>
-    <template><srai> return `FALSE` </srai></template>
-</category>
-<!-- Equal digit count: N1 and N2 are equal -->
-<category>
-    <pattern>UNKNOWN COLON LESSTHAN UNKNOWN</pattern>
-    <template><srai> return `FALSE` </srai></template>
-</category>
 
-<!-- *N1 :sdlt *N2  Single-Digit Comparison
-    Returns TRUE if N1 is less than N2, FALSE if not. Returns `unknown` if N1 or
-    N2 have more than one digit.
--->
+<!-- Single-Digit -->
 <category>
-    <pattern><set>number</set> COLON SDLT <set>number</set> </pattern>
+    <pattern><set>number</set> COLON LESSTHAN <set>number</set> </pattern>
     <template>
         <map name="comparisons">
             <star index="1"/> <star index="2"/>
         </map>
     </template>
+</category>
+
+<!-- Unequal digit count -->
+<category>
+    <pattern>UNKNOWN COLON LESSTHAN <set>number</set></pattern>
+    <template><srai> return TRUE </srai></template>
+</category>
+<!-- Unequal digit count -->
+<category>
+    <pattern><set>number</set> COLON LESSTHAN unknown</pattern>
+    <template><srai> return FALSE </srai></template>
 </category>
 
 
