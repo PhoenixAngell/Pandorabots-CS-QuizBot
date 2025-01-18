@@ -136,14 +136,16 @@
 <category>
     <pattern>RESET</pattern>
     <template>
-        <srai> topic := `INTRO` </srai>
+        <srai> topic := `unknown` </srai>
+        <srai> isInitialized := FALSE </srai>
     </template>
 </category>
 <category>
     <pattern>RESET TO MAIN</pattern>
     <template>
-        <srai> topic := `INTRO` </srai>
-        <srai> access_menu() </srai>
+        <srai> topic := `unknown` </srai>
+        <srai> isInitialized := FALSE </srai>
+        <srai> anything goes here </srai>
     </template>
 </category>
 
@@ -176,10 +178,12 @@
     <category>
         <pattern>TEXT LPAREN INTRO 1 RPAREN</pattern>
         <template>
-            Hello! I'm your Computer Science Career FAQ Bot.  <br/>
-            I can help answer common questions about CS careers. <br/>
-            I can'tunderstand text very well, so please enter the number of the 
-            question you'd like answered.  <br/>
+            <delay>1</delay>
+            Hello! I'm your Computer Science Career FAQ Bot. I can help answer common 
+            questions about CS careers. <br/>
+            <delay>2</delay>
+            I can't understand human language very well, but I do understand numbers. <br/>
+            <delay>3</delay>
         </template>
     </category>
 </topic>
@@ -311,6 +315,7 @@
 
             There are many occupations available to Computer Science graduates.
             Here are five common occupations for Computer Science graduates:<br/>
+            <delay>3</delay>
             <br/>
             <srai> listJobTypes() </srai>
             0. Go back to the main menu<br/>
@@ -603,7 +608,7 @@
             <srai> PROGLANG3_PTR := PROGLANG 3 </srai>
             <srai> PROGLANG4_PTR := PROGLANG 4 </srai>
             <srai> PROGLANG5_PTR := PROGLANG 5 </srai>
-            <srai> PROGLANG6_PTR := PROGLANG ALL </srai>
+            <!--<srai> PROGLANG6_PTR := PROGLANG ALL </srai>-->
             <srai> PROGLANG0_PTR := MAIN MENU </srai>
         </template>
     </category>
@@ -617,7 +622,7 @@
             Computer Science occupations require far more than just programming
             languages, and some don't require any programming skills at all. Let's
             look at common skills and systems needed for each role:<br/>
-            <br/>
+            <delay>3</delay>
             <srai> listJobTypes() </srai><br/>
             0. Go back
         </template>
@@ -625,6 +630,27 @@
     <category>
         <pattern>ACCESS UNDERSCORE MENU LPAREN RPAREN</pattern>
         <template><srai> PROGLANG MENU </srai></template>
+    </category>
+    
+    <category>
+        <pattern>PROGLANG <set>number</set></pattern>
+        <template>
+            <srai> text PROGLANG <star/> </srai><br/>
+            <br/>
+            Type 0 to go back.
+        </template>
+    </category>
+    
+    <category>
+        <pattern>0</pattern>
+        <that>^ TYPE 0 TO GO BACK ^</that>
+        <template>
+            Alright, let's go back.
+            <delay>1</delay>
+            <srai> listJobTypes() </srai>
+            <br/>
+            0. Back to main menu.
+        </template>
     </category>
     
     <category>
@@ -640,14 +666,14 @@
             - Debugging techniques and tools
         </template>
     </category>
-    <category>
-        <pattern>PROGLANG 1</pattern>
-        <template>
-            <srai> text PROGLANG 1 </srai> <br/>
-            <br/>
-            0. Go back
-        </template>
-    </category>
+    <!--<category>-->
+    <!--    <pattern>PROGLANG 1</pattern>-->
+    <!--    <template>-->
+    <!--        <srai> text PROGLANG 1 </srai> <br/>-->
+    <!--        <br/>-->
+    <!--        0. Go back-->
+    <!--    </template>-->
+    <!--</category>-->
     
     <category>
         <pattern>TEXT PROGLANG 2</pattern>
@@ -661,14 +687,14 @@
             - Data wrangling techniques for handling large and complex datasets
         </template>
     </category>
-    <category>
-        <pattern>PROGLANG 2</pattern>
-        <template>
-            <srai> text PROGLANG 2 </srai> <br/>
-            <br/>
-            0. Go back
-        </template>
-    </category>
+    <!--<category>-->
+    <!--    <pattern>PROGLANG 2</pattern>-->
+    <!--    <template>-->
+    <!--        <srai> text PROGLANG 2 </srai> <br/>-->
+    <!--        <br/>-->
+    <!--        0. Go back-->
+    <!--    </template>-->
+    <!--</category>-->
     
     <category>
         <pattern>TEXT PROGLANG 3</pattern>
@@ -682,14 +708,14 @@
             - Cybersecurity regulations (GDPR, CCPA)
         </template>
     </category>
-    <category>
-        <pattern>PROGLANG 3</pattern>
-        <template>
-            <srai> text PROGLANG 3 </srai> <br/>
-            <br/>
-            0. Go back
-        </template>
-    </category>
+    <!--<category>-->
+    <!--    <pattern>PROGLANG 3</pattern>-->
+    <!--    <template>-->
+    <!--        <srai> text PROGLANG 3 </srai> <br/>-->
+    <!--        <br/>-->
+    <!--        0. Go back-->
+    <!--    </template>-->
+    <!--</category>-->
     
     <category>
         <pattern>TEXT PROGLANG 4</pattern>
@@ -704,14 +730,14 @@
             - Data backup and recovery
         </template>
     </category>
-    <category>
-        <pattern>PROGLANG 4</pattern>
-        <template>
-            <srai> text PROGLANG 4 </srai> <br/>
-            <br/>
-            0. Go back
-        </template>
-    </category>
+    <!--<category>-->
+    <!--    <pattern>PROGLANG 4</pattern>-->
+    <!--    <template>-->
+    <!--        <srai> text PROGLANG 4 </srai> <br/>-->
+    <!--        <br/>-->
+    <!--        0. Go back-->
+    <!--    </template>-->
+    <!--</category>-->
     
     <category>
         <pattern>TEXT PROGLANG 5 </pattern>
@@ -726,14 +752,14 @@
             - Model deployment strategies (Docker, Kubernetes)
         </template>
     </category>
-    <category>
-        <pattern>PROGLANG 5</pattern>
-        <template>
-            <srai> text PROGLANG 5 </srai> <br/>
-            <br/>
-            0. Go back
-        </template>
-    </category>
+    <!--<category>-->
+    <!--    <pattern>PROGLANG 5</pattern>-->
+    <!--    <template>-->
+    <!--        <srai> text PROGLANG 5 </srai> <br/>-->
+    <!--        <br/>-->
+    <!--        0. Go back-->
+    <!--    </template>-->
+    <!--</category>-->
     
     <category>
         <pattern>PROGLANG ALL</pattern>
@@ -941,7 +967,7 @@
         3. Cybersecurity Analyst<br/>
         4. Systems Administrator<br/>
         5. AI/ML Engineer<br/>
-        6. Tell me about all of these occupations<br/>
+        <!--6. Tell me about all of these occupations<br/>-->
     </template>
 </category>
 
