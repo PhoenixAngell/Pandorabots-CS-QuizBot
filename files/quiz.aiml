@@ -228,16 +228,50 @@
 <!-- LISTENS FOR USER INPUT WHEN ACTIVE -->
 <topic name="LISTEN">
     
+    <!--<category>-->
+    <!--    <pattern><set>number</set></pattern>-->
+    <!--    <template>-->
+    <!--        <srai> receive(<star/>) </srai>-->
+    <!--    </template>-->
+    <!--</category>-->
     <category>
-        <pattern><set>number</set></pattern>
+        <pattern>*</pattern>
         <template>
-            <srai> log(ENTERING NUMBER LISTENER: <star/>, TOPIC: <get name="topic"/>) </srai>
-            <srai> receive(<star/>) </srai>
+            Please respond with a number between 1 and 5, or type `0` to quit.
         </template>
     </category>
     <category>
-        <pattern>*</pattern>
-        <topic>LISTEN</topic>
+        <pattern>1</pattern>
+        <template>
+            <srai> receive(1) </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>2</pattern>
+        <template>
+            <srai> receive(2) </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>3</pattern>
+        <template>
+            <srai> receive(3) </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>4</pattern>
+        <template>
+            <srai> receive(4) </srai>
+        </template>
+    </category>
+    <category>
+        <pattern>5</pattern>
+        <template>
+            <srai> receive(5) </srai>
+        </template>
+    </category>
+    <category>
+        <pattern><set>number</set></pattern>
         <template>
             Please respond with a number between 1 and 5, or type `0` to quit.
         </template>
@@ -328,30 +362,6 @@
     <pattern>REST LPAREN * ^ RPAREN</pattern>
     <template>
         <srai> return <star index="2"/> </srai>
-    </template>
-</category>
-
-
-<!-- push_left(*V *Vlist) Pushes value V to the left-side of value array Vlist  -->
-<category>
-    <pattern>PUSH UNDERSCORE LEFT LPAREN * * RPAREN</pattern>
-    <template>
-        <srai> return <star index="1"/> <star index="2"/> </srai>
-    </template>
-</category>
-<!-- push_left(*V *Vlist) Pushes value V to the right-side of value array Vlist  -->
-<category>
-    <pattern>PUSH UNDERSCORE RIGHT LPAREN * * RPAREN</pattern>
-    <template>
-        <srai> return <star index="2"/> <star index="1"/> </srai>
-    </template>
-</category>
-
-<!-- pop(*Vlist) Removes and returns the first element of array Vlist -->
-<category>
-    <pattern>POP LPAREN * RPAREN</pattern>
-    <template>
-        <srai> return <srai> first(<star/>) </srai> </srai>
     </template>
 </category>
 
