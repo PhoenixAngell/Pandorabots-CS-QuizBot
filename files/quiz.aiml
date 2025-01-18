@@ -387,47 +387,6 @@
     <template>
             
         <think>
-        <set var="ValuesEqual">
-            <srai> equal(<star index="1"/> <star index="2"/>) </srai>
-        </set>
-            
-        <!-- Count Digits -->
-        <set var="N1DigitCount"><srai> count(<star index="1"/>) </srai></set>
-        <set var="N2DigitCount"><srai> count(<star index="2"/>) </srai></set>
-        <set var="DigitCountEqual">
-            <srai> equal(<get var="N1DigitCount"/> <get var="N2DigitCount"/>) </srai>
-        </set>
-        <set var="ValuesEqual DigitCountEqual">
-            <get var="ValuesEqual"/> <get var="DigitCountEqual"/> 
-        </set>
-        </think>
-        
-        <!-- Eliminate equal numbers -->
-        <!-- Otherwise, recurse for numbers with unequal digit counts -->
-        <!-- Otherwise, perform comparison -->
-        <condition var="ValuesEqual" value="TRUE">
-            <srai> return FALSE </srai>
-        </condition>
-        <condition var="DigitCountEqual" value="FALSE">
-            <srai> lt(<get var="N1DigitCount"/> <get var="N2DigitCount"/>) </srai>
-        </condition>
-        <condition var="ValuesEqual DigitCountEqual" value="FALSE TRUE">
-            <srai>
-                <explode><star index="1"/></explode> :LESSTHAN <explode><star index="2"/></explode>
-            </srai>            
-        </condition>
-    </template>
-</category>
-
-
-<!-- lt(*N1 *N2) (Less Than Operator) 
-    Returns TRUE if number N1 is less than number N2
--->
-<category>
-    <pattern>LT LPAREN <set>number</set> <set>number</set> RPAREN</pattern>
-    <template>
-            
-        <think>
             <set var="N1"><explode><star index="1"/></explode></set>
             <set var="N2"><explode><star index="2"/></explode></set>
         </think>
